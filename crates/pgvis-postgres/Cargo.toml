@@ -1,0 +1,22 @@
+[package]
+name = "pgvis-postgres"
+description = "Postgres backend implementation for pgvis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pgvis-core = { path = "../pgvis-core" }
+tokio-postgres.workspace = true
+deadpool-postgres.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+futures.workspace = true

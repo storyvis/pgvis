@@ -1,0 +1,24 @@
+[package]
+name = "pgvis-core"
+description = "Backend-agnostic schema cache, plan AST, and SQL builder for pgvis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+arc-swap.workspace = true
+winnow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+futures.workspace = true
+
+[dev-dependencies]
+insta = { version = "1", features = ["json"] }

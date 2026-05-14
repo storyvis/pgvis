@@ -1,0 +1,80 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/pgvis-core",
+  "crates/pgvis-postgres",
+  "crates/pgvis-rest",
+  "crates/pgvis-embed",
+  "crates/pgvis-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+authors = ["Storyvis AI <eng@storyvis.ai>"]
+homepage = "https://storyvis.ai"
+repository = "https://github.com/storyvis-ai/pgvis"
+documentation = "https://docs.rs/pgvis"
+readme = "README.md"
+keywords = ["postgres", "sqlite", "rest", "openapi", "mcp"]
+categories = ["database", "web-programming::http-server", "api-bindings"]
+
+[workspace.dependencies]
+# async / http
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+http = "1"
+
+# postgres
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1", "with-uuid-1", "with-chrono-0_4"] }
+deadpool-postgres = "0.14"
+
+# data
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+indexmap = { version = "2", features = ["serde"] }
+arc-swap = "1"
+
+# openapi
+openapiv3 = "2"
+
+# parser / config / cli
+winnow = "0.7"
+figment = { version = "0.10", features = ["env", "toml"] }
+clap = { version = "4", features = ["derive", "env"] }
+
+# auth
+jsonwebtoken = "9"
+
+# observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# errors / misc
+thiserror = "2"
+anyhow = "1"
+futures = "0.3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Allow these common pedantic lints
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[profile.dev]
+# Faster incremental builds
+split-debuginfo = "unpacked"

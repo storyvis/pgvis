@@ -1,0 +1,20 @@
+[package]
+name = "pgvis-embed"
+description = "Friendly facade for embedding pgvis in any Rust application"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pgvis-core = { path = "../pgvis-core" }
+pgvis-postgres = { path = "../pgvis-postgres" }
+pgvis-rest = { path = "../pgvis-rest" }
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
