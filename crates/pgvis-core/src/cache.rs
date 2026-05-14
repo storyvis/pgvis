@@ -27,6 +27,10 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+fn default_true() -> bool {
+    true
+}
+
 // ---------------------------------------------------------------------------
 // Identifiers
 // ---------------------------------------------------------------------------
@@ -83,6 +87,17 @@ impl std::fmt::Display for QualifiedIdentifier {
 /// (introspection query order), which gives deterministic OpenAPI output.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SchemaCache {
+    /// When this cache was built (for ETag/Last-Modified and debugging).
+    #[serde(default)]
+    pub built_at: Option<std::time::SystemTime>,
+
+    /// Backend-specific schema version string for staleness detection.
+    ///
+    /// - Postgres: result of `pg_catalog.version()` or txid at introspection time
+    /// - SQLite: `PRAGMA schema_version` value
+    #[serde(default)]
+    pub schema_version: Option<String>,
+
     /// All exposed tables and views, keyed by `schema.name`.
     ///
     /// Includes both base tables and views. The [`Table::is_view`] flag
@@ -223,6 +238,14 @@ pub struct Table {
     /// or empty (SQLite).
     pub pk_cols: Vec<String>,
 
+    /// All unique constraints (including the primary key).
+    ///
+    /// Used for:
+    /// - `ON CONFLICT` target resolution in upsert
+    /// - OpenAPI documentation of conflict targets
+    /// - `Location` header when PK differs from upsert target
+    pub unique_constraints: Vec<UniqueConstraint>,
+
     /// All columns in ordinal order.
     ///
     /// `IndexMap` preserves insertion order matching `ordinal_position`.
@@ -268,6 +291,24 @@ pub struct Column {
     ///
     /// Drives OpenAPI `nullable` and request validation.
     pub nullable: bool,
+
+    /// Whether this is a generated column (`GENERATED ALWAYS AS ... STORED`
+    /// or `GENERATED ALWAYS AS IDENTITY`).
+    ///
+    /// Generated columns must be excluded from INSERT/UPDATE payloads.
+    /// OpenAPI marks them as `readOnly`.
+    ///
+    /// Supported on both Postgres and SQLite 3.31+.
+    #[serde(default)]
+    pub is_generated: bool,
+
+    /// Whether this column is updatable.
+    ///
+    /// False for generated columns, identity columns with `GENERATED ALWAYS`,
+    /// and view columns without INSTEAD OF triggers.
+    /// Used to gate PATCH inclusion per-column.
+    #[serde(default = "default_true")]
+    pub updatable: bool,
 
     /// The resolved base type name.
     ///
@@ -582,6 +623,23 @@ pub enum IsolationLevel {
     RepeatableRead,
     /// `SERIALIZABLE` — full serialisation.
     Serializable,
+}
+
+// ---------------------------------------------------------------------------
+// Unique Constraints
+// ---------------------------------------------------------------------------
+
+/// A unique constraint on a table (includes PK).
+///
+/// Used for upsert (`ON CONFLICT`) target resolution and OpenAPI documentation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UniqueConstraint {
+    /// Constraint name (e.g. `users_pkey`, `users_email_key`).
+    pub name: String,
+    /// Columns participating in the constraint.
+    pub columns: Vec<String>,
+    /// Whether this is the primary key constraint.
+    pub is_pk: bool,
 }
 
 // ---------------------------------------------------------------------------

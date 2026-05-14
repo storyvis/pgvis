@@ -7,6 +7,9 @@
 //! - The [`Dialect`] struct parametrising SQL generation for different databases
 //! - The [`Error`] type used throughout the stack
 //! - Shared [`Config`] types consumed by backends and adapters
+//! - The [`select_ast`] types for parsed `select=` parameter AST
+//! - The [`query_params`] parsers for the PostgREST query-string DSL
+//! - The [`preferences`] module for `Prefer` header parsing
 //!
 //! ## Architectural Role
 //!
@@ -15,7 +18,9 @@
 //!   │
 //!   ├── defines trait Backend ──► implemented by pgvis-postgres, pgvis-sqlite
 //!   ├── defines SchemaCache   ──► consumed by pgvis-rest, pgvis-mcp
-//!   ├── defines Dialect       ──► used by SQL builder (planned: pgvis-core::query)
+//!   ├── defines Dialect       ──► used by SQL builder (pgvis-core::query)
+//!   ├── defines select_ast    ──► parser output, plan layer input
+//!   ├── defines query_params  ──► winnow parsers for PostgREST DSL
 //!   └── defines Error/Config  ──► shared across all crates
 //! ```
 //!
@@ -43,13 +48,22 @@ pub mod cache;
 pub mod config;
 pub mod dialect;
 pub mod error;
+pub mod preferences;
+pub mod query_params;
+pub mod select_ast;
 
 // Re-export primary types for ergonomic use
 pub use backend::{Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream};
 pub use cache::{
     Cardinality, Column, ComputedRelationship, DataRepresentation, MediaHandler,
-    QualifiedIdentifier, Relationship, Routine, RoutineParam, SchemaCache, Table, Volatility,
+    QualifiedIdentifier, Relationship, Routine, RoutineParam, SchemaCache, Table,
+    UniqueConstraint, Volatility,
 };
 pub use config::Config;
 pub use dialect::{Dialect, Placeholder, POSTGRES, SQLITE};
 pub use error::{Error, ErrorCode};
+pub use preferences::Preferences;
+pub use select_ast::{
+    AggregateFunction, FieldSelect, JoinType, JsonOperand, JsonOperation, RelationSelect,
+    SelectItem, SpreadSelect,
+};
