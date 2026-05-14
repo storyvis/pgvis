@@ -1046,6 +1046,7 @@ version = "0.1.0"
 dependencies = [
  "deadpool-postgres",
  "futures",
+ "indexmap",
  "pgvis-core",
  "serde",
  "serde_json",
