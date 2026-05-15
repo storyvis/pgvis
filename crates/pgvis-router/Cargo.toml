@@ -1,6 +1,6 @@
 [package]
-name = "pgvis-rest"
-description = "REST + OpenAPI adapter for pgvis — mount in any axum app"
+name = "pgvis-router"
+description = "Embeddable REST + OpenAPI router for pgvis — mount in any axum app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
