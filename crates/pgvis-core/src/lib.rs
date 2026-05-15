@@ -52,6 +52,7 @@ pub mod dialect;
 pub mod error;
 pub mod plan;
 pub mod preferences;
+pub mod query;
 pub mod query_params;
 pub mod select_ast;
 
