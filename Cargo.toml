@@ -4,6 +4,7 @@ members = [
   "crates/pgvis-core",
   "crates/pgvis-postgres",
   "crates/pgvis-rest",
+  "crates/pgvis-mcp",
   "crates/pgvis-embed",
   "crates/pgvis-server",
 ]

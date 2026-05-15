@@ -1041,6 +1041,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pgvis-mcp"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "pgvis-core",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "pgvis-postgres"
 version = "0.1.0"
 dependencies = [

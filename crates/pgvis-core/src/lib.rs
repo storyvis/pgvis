@@ -10,6 +10,7 @@
 //! - The [`select_ast`] types for parsed `select=` parameter AST
 //! - The [`query_params`] parsers for the PostgREST query-string DSL
 //! - The [`preferences`] module for `Prefer` header parsing
+//! - The [`plan`] layer types — fully-resolved, I/O-free action plans
 //!
 //! ## Architectural Role
 //!
@@ -21,6 +22,7 @@
 //!   ├── defines Dialect       ──► used by SQL builder (pgvis-core::query)
 //!   ├── defines select_ast    ──► parser output, plan layer input
 //!   ├── defines query_params  ──► winnow parsers for PostgREST DSL
+//!   ├── defines plan          ──► resolved action plans for SQL builder
 //!   └── defines Error/Config  ──► shared across all crates
 //! ```
 //!
@@ -48,18 +50,20 @@ pub mod cache;
 pub mod config;
 pub mod dialect;
 pub mod error;
+pub mod plan;
 pub mod preferences;
 pub mod query_params;
 pub mod select_ast;
 
 // Re-export primary types for ergonomic use
 pub use backend::{Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream};
+pub use plan::{plan_request, ActionPlan, ApiRequest, CallPlan, MutatePlan, PlanConfig, ReadPlan, RequestMethod};
 pub use cache::{
     Cardinality, Column, ComputedRelationship, DataRepresentation, MediaHandler,
     QualifiedIdentifier, Relationship, Routine, RoutineParam, SchemaCache, Table,
     UniqueConstraint, Volatility,
 };
-pub use config::Config;
+pub use config::{Config, RoutingConfig};
 pub use dialect::{Dialect, Placeholder, POSTGRES, SQLITE};
 pub use error::{Error, ErrorCode};
 pub use preferences::Preferences;

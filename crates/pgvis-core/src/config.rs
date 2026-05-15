@@ -21,6 +21,128 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Configuration for URL routing and namespace mapping.
+///
+/// Controls how REST routes are structured and how MCP tools are named.
+/// Both adapters read this to determine their namespace hierarchy.
+///
+/// # Routing Modes
+///
+/// | Mode | Example URL | Config |
+/// |------|-------------|--------|
+/// | Full path | `/api/public/users` | `schema_in_path = true` |
+/// | Prefix only | `/api/users` | `schema_in_path = false` |
+/// | Compat | `/users` | `schema_in_path = false, prefix = ""` |
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoutingConfig {
+    /// URL prefix for all API routes.
+    ///
+    /// Examples: `"api"`, `"v1"`, `""` (empty for PostgREST compat).
+    /// Leading/trailing slashes are stripped automatically.
+    ///
+    /// REST: routes are mounted under `/{prefix}/...`
+    /// MCP: prefix is not used in tool names.
+    #[serde(default = "default_routing_prefix")]
+    pub prefix: String,
+
+    /// Whether the schema name appears in the URL path.
+    ///
+    /// When `true`: `/{prefix}/{schema}/{table}` (recommended)
+    /// When `false`: `/{prefix}/{table}` with schema from header/default (PostgREST compat)
+    ///
+    /// Defaults to `true` for new projects.
+    #[serde(default = "default_schema_in_path")]
+    pub schema_in_path: bool,
+
+    /// The default schema used when `schema_in_path = false`.
+    ///
+    /// Requests without an explicit schema header use this schema.
+    /// Must be one of the schemas listed in `Config::schemas`.
+    ///
+    /// Defaults to `"public"`.
+    #[serde(default = "default_default_schema")]
+    pub default_schema: String,
+
+    /// Separator character for MCP tool names.
+    ///
+    /// Tool names are formatted as `{schema}{separator}{verb}_{table}`.
+    /// `/` maps cleanly to hierarchical tool discovery.
+    /// `.` is an alternative for flat tool lists.
+    ///
+    /// Defaults to `'/'`.
+    #[serde(default = "default_mcp_separator")]
+    pub mcp_separator: char,
+}
+
+impl RoutingConfig {
+    /// Generate an MCP tool name from schema, verb, and target.
+    ///
+    /// When `schema_in_path = true`, always includes the schema prefix.
+    /// When `schema_in_path = false`, omits the prefix for the default schema.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pgvis_core::config::RoutingConfig;
+    ///
+    /// let config = RoutingConfig::default();
+    /// assert_eq!(config.mcp_tool_name("public", "list", "users"), "public/list_users");
+    /// assert_eq!(config.mcp_tool_name("internal", "call", "rotate"), "internal/call_rotate");
+    /// ```
+    pub fn mcp_tool_name(&self, schema: &str, verb: &str, target: &str) -> String {
+        if self.schema_in_path || schema != self.default_schema {
+            format!("{schema}{sep}{verb}_{target}", sep = self.mcp_separator)
+        } else {
+            format!("{verb}_{target}")
+        }
+    }
+
+    /// Build the URL path prefix for a given schema.
+    ///
+    /// Returns the path segment(s) that precede the table/rpc name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pgvis_core::config::RoutingConfig;
+    ///
+    /// let config = RoutingConfig::default();
+    /// assert_eq!(config.schema_path_prefix("public"), "/api/public");
+    ///
+    /// let compat = RoutingConfig { prefix: String::new(), schema_in_path: false, ..Default::default() };
+    /// assert_eq!(compat.schema_path_prefix("public"), "");
+    /// ```
+    pub fn schema_path_prefix(&self, schema: &str) -> String {
+        let prefix_part = if self.prefix.is_empty() {
+            String::new()
+        } else {
+            format!("/{}", self.prefix)
+        };
+
+        if self.schema_in_path {
+            format!("{prefix_part}/{schema}")
+        } else {
+            prefix_part
+        }
+    }
+
+    /// Normalize the prefix by stripping leading/trailing slashes.
+    pub fn normalized_prefix(&self) -> &str {
+        self.prefix.trim_matches('/')
+    }
+}
+
+impl Default for RoutingConfig {
+    fn default() -> Self {
+        Self {
+            prefix: default_routing_prefix(),
+            schema_in_path: default_schema_in_path(),
+            default_schema: default_default_schema(),
+            mcp_separator: default_mcp_separator(),
+        }
+    }
+}
+
 /// Shared configuration consumed by backends and adapters.
 ///
 /// This is the "inner config" that both the REST adapter and the Backend
@@ -172,6 +294,14 @@ pub struct Config {
     /// PostgREST equivalent: `openapi-mode`.
     #[serde(default)]
     pub openapi_mode: OpenApiMode,
+
+    // --- Routing ---
+
+    /// URL routing and namespace configuration.
+    ///
+    /// Controls route URL structure and MCP tool naming.
+    #[serde(default)]
+    pub routing: RoutingConfig,
 }
 
 impl Default for Config {
@@ -193,6 +323,7 @@ impl Default for Config {
             openapi_title: None,
             openapi_server_url: None,
             openapi_mode: OpenApiMode::default(),
+            routing: RoutingConfig::default(),
         }
     }
 }
@@ -250,4 +381,20 @@ fn default_jwt_algo() -> JwtAlgorithm {
 
 fn default_role_claim_key() -> String {
     "role".to_string()
+}
+
+fn default_routing_prefix() -> String {
+    "api".to_string()
+}
+
+fn default_schema_in_path() -> bool {
+    true
+}
+
+fn default_default_schema() -> String {
+    "public".to_string()
+}
+
+fn default_mcp_separator() -> char {
+    '/'
 }
