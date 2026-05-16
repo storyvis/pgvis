@@ -39,6 +39,7 @@
 //! ```
 
 pub mod openapi;
+pub mod response;
 pub mod routing;
 
 pub use routing::{build_app, AppState};

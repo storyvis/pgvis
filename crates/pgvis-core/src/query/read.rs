@@ -338,6 +338,6 @@ mod tests {
         assert!(sql.contains("\"users\".\"id\""));
         assert!(sql.contains("\"users\".\"name\""));
         assert!(sql.contains("FROM \"public\".\"users\" AS \"users\""));
-        assert!(sql.contains("LIMIT $1"));
+        assert!(sql.contains("LIMIT 10"));
     }
 }

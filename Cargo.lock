@@ -1081,12 +1081,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "pgvis-embed"
+name = "pgvis-lib"
 version = "0.1.0"
 dependencies = [
  "arc-swap",
  "axum",
  "pgvis-core",
+ "pgvis-mcp",
  "pgvis-postgres",
  "pgvis-router",
  "thiserror",
@@ -1114,6 +1115,7 @@ dependencies = [
 name = "pgvis-postgres"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "deadpool-postgres",
  "futures",
  "indexmap",
@@ -1132,6 +1134,7 @@ version = "0.1.0"
 dependencies = [
  "arc-swap",
  "axum",
+ "futures",
  "http",
  "indexmap",
  "openapiv3",
@@ -1155,12 +1158,11 @@ dependencies = [
  "clap",
  "figment",
  "pgvis-core",
- "pgvis-mcp",
- "pgvis-postgres",
- "pgvis-router",
+ "pgvis-lib",
  "serde",
  "serde_json",
  "tokio",
+ "tower",
  "tracing",
  "tracing-subscriber",
 ]

@@ -103,7 +103,7 @@ fn render_filter(
 
         // Comparison and pattern operators
         op => {
-            let placeholder = push_filter_value(&filter.value, ctx);
+            let placeholder = push_filter_value_with_op(&filter.value, Some(op), ctx);
             let sql_op = operator_to_sql(op);
             format!("{negation}{col} {sql_op} {placeholder}")
         }
@@ -150,8 +150,25 @@ fn render_rewritten_filter(
 
 /// Push a filter value as a parameter and return the placeholder.
 fn push_filter_value(value: &FilterValue, ctx: &mut RenderContext<'_>) -> String {
+    push_filter_value_with_op(value, None, ctx)
+}
+
+/// Push a filter value with optional operator context for LIKE/ILIKE wildcard conversion.
+fn push_filter_value_with_op(
+    value: &FilterValue,
+    op: Option<&Operator>,
+    ctx: &mut RenderContext<'_>,
+) -> String {
     match value {
-        FilterValue::Single(s) => ctx.push_param(Value::from(s.as_str())),
+        FilterValue::Single(s) => {
+            // PostgREST convention: LIKE/ILIKE patterns use `*` instead of `%`
+            let val = if matches!(op, Some(Operator::Like | Operator::ILike)) {
+                s.replace('*', "%")
+            } else {
+                s.clone()
+            };
+            ctx.push_param(Value::from(val))
+        }
         FilterValue::List(values) => {
             // For single-placeholder contexts (shouldn't typically happen for lists)
             let json_array = Value::Array(values.iter().map(|v| Value::from(v.as_str())).collect());
@@ -406,25 +423,19 @@ pub fn render_group_by(
 // ---------------------------------------------------------------------------
 
 /// Render LIMIT/OFFSET clause. Returns `None` if neither is set.
+///
+/// Uses literal numbers instead of parameters because:
+/// 1. LIMIT/OFFSET don't support implicit TEXT→BIGINT coercion in Postgres
+/// 2. These values are system-generated from Range header parsing, not user input
 pub fn render_limit_offset(
     limit: Option<u64>,
     offset: Option<u64>,
-    ctx: &mut RenderContext<'_>,
+    _ctx: &mut RenderContext<'_>,
 ) -> Option<String> {
     match (limit, offset) {
-        (Some(l), Some(o)) => {
-            let lp = ctx.push_param(Value::from(l));
-            let op = ctx.push_param(Value::from(o));
-            Some(format!("LIMIT {lp} OFFSET {op}"))
-        }
-        (Some(l), None) => {
-            let lp = ctx.push_param(Value::from(l));
-            Some(format!("LIMIT {lp}"))
-        }
-        (None, Some(o)) => {
-            let op = ctx.push_param(Value::from(o));
-            Some(format!("OFFSET {op}"))
-        }
+        (Some(l), Some(o)) => Some(format!("LIMIT {l} OFFSET {o}")),
+        (Some(l), None) => Some(format!("LIMIT {l}")),
+        (None, Some(o)) => Some(format!("OFFSET {o}")),
         (None, None) => None,
     }
 }

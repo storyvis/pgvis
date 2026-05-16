@@ -60,13 +60,13 @@ async fn run_introspection(
     client: &Client,
     cfg: &IntrospectConfig,
 ) -> Result<SchemaCache, Error> {
-    let schemas: Vec<&str> = cfg.schemas.iter().map(String::as_str).collect();
+    let schemas: &[String] = &cfg.schemas;
 
     info!(schemas = ?cfg.schemas, "introspecting database schema");
 
-    let tables = tables::query_tables(client, &schemas).await?;
+    let tables = tables::query_tables(client, schemas).await?;
     let rels = relationships::query_relationships(client).await?;
-    let routines = routines::query_routines(client, &schemas).await?;
+    let routines = routines::query_routines(client, schemas).await?;
     let representations = representations::query_representations(client).await?;
 
     // Assemble the cache

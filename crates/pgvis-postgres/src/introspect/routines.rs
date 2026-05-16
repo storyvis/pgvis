@@ -4,6 +4,7 @@ use indexmap::IndexMap;
 use pgvis_core::cache::{IsolationLevel, QualifiedIdentifier, Routine, RoutineParam, Volatility};
 use pgvis_core::error::Error;
 use serde::Deserialize;
+use tokio_postgres::types::Type;
 use tokio_postgres::Client;
 
 /// SQL query for routines introspection (loaded at compile time).
@@ -31,13 +32,19 @@ struct SettingJson {
 /// Returns an ordered map of `QualifiedIdentifier → Vec<Routine>` (Vec for overloads).
 pub async fn query_routines(
     client: &Client,
-    schemas: &[&str],
+    schemas: &[String],
 ) -> Result<IndexMap<QualifiedIdentifier, Vec<Routine>>, Error> {
     // For now, pass empty array for hoisted settings (will be configurable later)
-    let hoisted_settings: Vec<&str> = Vec::new();
+    let hoisted_settings: Vec<String> = Vec::new();
 
+    // Use prepare_typed to explicitly tell Postgres params are TEXT[].
+    // Without this, Postgres infers regnamespace[] from the cast in the SQL.
+    let stmt = client
+        .prepare_typed(ROUTINES_SQL, &[Type::TEXT_ARRAY, Type::TEXT_ARRAY])
+        .await
+        .map_err(|e| Error::Introspection(format!("routines query prepare failed: {e}")))?;
     let rows = client
-        .query(ROUTINES_SQL, &[&schemas, &hoisted_settings])
+        .query(&stmt, &[&schemas, &hoisted_settings])
         .await
         .map_err(|e| Error::Introspection(format!("routines query failed: {e}")))?;
 

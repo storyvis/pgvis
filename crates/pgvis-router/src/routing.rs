@@ -1,7 +1,7 @@
 //! Schema-driven routing — builds axum routes from the schema cache.
 //!
 //! The [`build_app`] function is the primary entry point. It takes a [`SchemaCache`],
-//! [`Config`], and [`Dialect`] and produces an `axum::Router` with all routes
+//! [`Config`], [`Dialect`], and [`Backend`] and produces an `axum::Router` with all routes
 //! registered for the exposed schemas.
 //!
 //! ## Routing Modes
@@ -17,16 +17,19 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
-use pgvis_core::plan::{plan_request, ApiRequest, RequestBody, RequestMethod};
-use pgvis_core::preferences::Preferences;
+use pgvis_core::backend::{Backend, ExecContext, TxEnd};
+use pgvis_core::plan::{plan_request, ActionPlan, ApiRequest, RequestBody, RequestMethod};
+use pgvis_core::preferences::{PreferTx, Preferences};
+use pgvis_core::query;
 use pgvis_core::query_params::{self, OrderItem};
 use pgvis_core::select_ast::SelectItem;
 use pgvis_core::{Config, Dialect, SchemaCache};
 
 use crate::openapi;
+use crate::response;
 
 // ---------------------------------------------------------------------------
 // AppState
@@ -45,13 +48,15 @@ pub struct AppState {
     pub config: Arc<Config>,
     /// The SQL dialect (Postgres or SQLite capability flags).
     pub dialect: Arc<Dialect>,
+    /// The database backend for query execution.
+    pub backend: Arc<dyn Backend>,
 }
 
 // ---------------------------------------------------------------------------
 // build_app — the main entry point
 // ---------------------------------------------------------------------------
 
-/// Build an axum Router from the [`SchemaCache`] and configuration.
+/// Build an axum Router from the [`SchemaCache`], configuration, and backend.
 ///
 /// Routes are generated based on `config.routing`:
 /// - `schema_in_path = true`: `/{prefix}/{schema}/{table}` and `/{prefix}/{schema}/rpc/{fn}`
@@ -72,11 +77,13 @@ pub fn build_app(
     cache: Arc<ArcSwap<SchemaCache>>,
     config: Arc<Config>,
     dialect: Arc<Dialect>,
+    backend: Arc<dyn Backend>,
 ) -> Router {
     let state = AppState {
         cache,
         config: config.clone(),
         dialect,
+        backend,
     };
 
     let routing = &config.routing;
@@ -149,14 +156,14 @@ async fn handle_table_with_schema(
     method: axum::http::Method,
     Path(params): Path<HashMap<String, String>>,
     headers: HeaderMap,
-    Query(query): Query<HashMap<String, String>>,
+    Query(query_params): Query<HashMap<String, String>>,
     body: Option<Json<serde_json::Value>>,
-) -> impl IntoResponse {
+) -> Response {
     let schema = params.get("schema").cloned().unwrap_or_default();
     let target = params.get("target").cloned().unwrap_or_default();
     let request_method = http_method_to_request_method(&method);
 
-    dispatch_request(&state, schema, target, request_method, false, &headers, &query, body.map(|b| b.0))
+    dispatch_request(&state, schema, target, request_method, false, &headers, &query_params, body.map(|b| b.0)).await
 }
 
 /// Handle RPC requests when the schema is in the URL path.
@@ -165,15 +172,15 @@ async fn handle_rpc_with_schema(
     method: axum::http::Method,
     Path(params): Path<HashMap<String, String>>,
     headers: HeaderMap,
-    Query(query): Query<HashMap<String, String>>,
+    Query(query_params): Query<HashMap<String, String>>,
     body: Option<Json<serde_json::Value>>,
-) -> impl IntoResponse {
+) -> Response {
     let schema = params.get("schema").cloned().unwrap_or_default();
     let function = params.get("function").cloned().unwrap_or_default();
 
-    // RPC requests are always planned as POST (function call)
-    let _ = method; // RPC accepts both GET and POST
-    dispatch_request(&state, schema, function, RequestMethod::Post, true, &headers, &query, body.map(|b| b.0))
+    // RPC accepts both GET and POST — always plan as Post for function call
+    let _ = method;
+    dispatch_request(&state, schema, function, RequestMethod::Post, true, &headers, &query_params, body.map(|b| b.0)).await
 }
 
 // ---------------------------------------------------------------------------
@@ -186,14 +193,14 @@ async fn handle_table_no_schema(
     method: axum::http::Method,
     Path(params): Path<HashMap<String, String>>,
     headers: HeaderMap,
-    Query(query): Query<HashMap<String, String>>,
+    Query(query_params): Query<HashMap<String, String>>,
     body: Option<Json<serde_json::Value>>,
-) -> impl IntoResponse {
+) -> Response {
     let target = params.get("target").cloned().unwrap_or_default();
     let schema = resolve_schema_from_headers(&headers, &state.config);
     let request_method = http_method_to_request_method(&method);
 
-    dispatch_request(&state, schema, target, request_method, false, &headers, &query, body.map(|b| b.0))
+    dispatch_request(&state, schema, target, request_method, false, &headers, &query_params, body.map(|b| b.0)).await
 }
 
 /// Handle RPC requests when the schema comes from headers/config.
@@ -202,14 +209,14 @@ async fn handle_rpc_no_schema(
     method: axum::http::Method,
     Path(params): Path<HashMap<String, String>>,
     headers: HeaderMap,
-    Query(query): Query<HashMap<String, String>>,
+    Query(query_params): Query<HashMap<String, String>>,
     body: Option<Json<serde_json::Value>>,
-) -> impl IntoResponse {
+) -> Response {
     let function = params.get("function").cloned().unwrap_or_default();
     let schema = resolve_schema_from_headers(&headers, &state.config);
 
     let _ = method;
-    dispatch_request(&state, schema, function, RequestMethod::Post, true, &headers, &query, body.map(|b| b.0))
+    dispatch_request(&state, schema, function, RequestMethod::Post, true, &headers, &query_params, body.map(|b| b.0)).await
 }
 
 // ---------------------------------------------------------------------------
@@ -220,7 +227,7 @@ async fn handle_rpc_no_schema(
 async fn handle_root(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> impl IntoResponse {
+) -> Response {
     // Check if the client accepts OpenAPI JSON
     let accept = headers
         .get("accept")
@@ -232,30 +239,37 @@ async fn handle_root(
         let cache = state.cache.load();
         let spec = openapi::generate_spec(&cache, &state.config);
         match serde_json::to_value(&spec) {
-            Ok(val) => (StatusCode::OK, Json(val)),
+            Ok(val) => (StatusCode::OK, Json(val)).into_response(),
             Err(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "code": "PGV500",
                     "message": format!("Failed to serialize OpenAPI spec: {e}"),
                 })),
-            ),
+            ).into_response(),
         }
     } else {
-        let response = serde_json::json!({
+        let resp = serde_json::json!({
             "schemas": state.config.schemas,
             "hint": "Append a table/view name to query it. Use Accept: application/openapi+json for the OpenAPI spec.",
         });
-        (StatusCode::OK, Json(response))
+        (StatusCode::OK, Json(resp)).into_response()
     }
 }
 
 // ---------------------------------------------------------------------------
-// Core dispatch logic
+// Core dispatch logic — the full pipeline
 // ---------------------------------------------------------------------------
 
-/// Core request dispatch — builds an [`ApiRequest`] and runs it through the planner.
-fn dispatch_request(
+/// Core request dispatch — plan → render SQL → execute → format response.
+///
+/// This is the heart of the pgvis pipeline:
+/// 1. Parse HTTP concerns into an [`ApiRequest`]
+/// 2. Plan the request against the schema cache → [`ActionPlan`]
+/// 3. Render the plan to parameterised SQL via [`query::render`]
+/// 4. Execute via [`Backend::execute`] with transaction/role/claims
+/// 5. Format the [`QueryResult`] into an HTTP response
+async fn dispatch_request(
     state: &AppState,
     schema: String,
     target: String,
@@ -264,38 +278,58 @@ fn dispatch_request(
     headers: &HeaderMap,
     params: &HashMap<String, String>,
     body: Option<serde_json::Value>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Response {
     let cache = state.cache.load();
 
-    // Build the adapter-agnostic ApiRequest
-    let api_request = build_api_request(schema, target, method, is_rpc, headers, params, body);
+    // Parse preferences early — needed for ExecContext and response formatting
+    let preferences = headers
+        .get("prefer")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| Preferences::parse(s).0)
+        .unwrap_or_default();
 
-    // Plan the request against the schema cache
-    match plan_request(&api_request, &cache, &state.dialect, &state.config) {
-        Ok(plan) => {
-            // TODO: SQL builder + execution — for now return the plan summary as JSON
-            let plan_type = match &plan {
-                pgvis_core::plan::ActionPlan::Read(_) => "Read",
-                pgvis_core::plan::ActionPlan::Mutate(_) => "Mutate",
-                pgvis_core::plan::ActionPlan::Call(_) => "Call",
-                pgvis_core::plan::ActionPlan::Inspect(_) => "Inspect",
-            };
-            let response = serde_json::json!({
-                "status": "planned",
-                "plan_type": plan_type,
-            });
-            (StatusCode::OK, Json(response))
-        }
-        Err(err) => {
-            let status = StatusCode::from_u16(err.http_status())
-                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-            let body = serde_json::json!({
-                "code": err.code().as_str(),
-                "message": err.to_string(),
-            });
-            (status, Json(body))
-        }
+    // 1. Build the adapter-agnostic ApiRequest
+    let api_request = build_api_request(
+        schema, target, method.clone(), is_rpc, headers, params, body, &preferences,
+    );
+
+    // 2. Plan the request against the schema cache
+    let plan = match plan_request(&api_request, &cache, &state.dialect, &state.config) {
+        Ok(plan) => plan,
+        Err(err) => return response::format_error(&err),
+    };
+
+    // For Inspect plans, return the inspection result directly
+    if let ActionPlan::Inspect(_) = &plan {
+        let resp = serde_json::json!({"status": "inspect", "message": "not yet implemented"});
+        return (StatusCode::OK, Json(resp)).into_response();
     }
+
+    // 3. Render the plan to SQL + parameters
+    let (sql, params_vec) = match query::render(&plan, &state.dialect) {
+        Ok(rendered) => rendered,
+        Err(err) => return response::format_error(&err),
+    };
+
+    tracing::debug!(sql = %sql, params = ?params_vec, "executing query");
+
+    // 4. Build ExecContext from config + preferences
+    let exec_ctx = build_exec_context(&state.config, &preferences);
+
+    // 5. Execute via backend
+    let result = match state.backend.execute(&exec_ctx, &sql, &params_vec).await {
+        Ok(result) => result,
+        Err(err) => return response::format_error(&err),
+    };
+
+    // 6. Format the QueryResult into an HTTP response
+    let is_singular = headers
+        .get("accept")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.contains("application/vnd.pgrst.object"))
+        .unwrap_or(false);
+
+    response::format_response(&result, &method, &preferences, is_singular)
 }
 
 // ---------------------------------------------------------------------------
@@ -311,10 +345,13 @@ fn build_api_request(
     target: String,
     method: RequestMethod,
     is_rpc: bool,
-    headers: &HeaderMap,
+    _headers: &HeaderMap,
     params: &HashMap<String, String>,
     body: Option<serde_json::Value>,
+    preferences: &Preferences,
 ) -> ApiRequest {
+    let _ = preferences; // Will be used for count strategy, etc.
+
     // Parse select parameter
     let select = params
         .get("select")
@@ -349,13 +386,6 @@ fn build_api_request(
     // Parse range (limit/offset)
     let range = parse_range_from_params(params);
 
-    // Parse preferences from Prefer header
-    let preferences = headers
-        .get("prefer")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| Preferences::parse(s).0)
-        .unwrap_or_default();
-
     // Parse body into RequestBody
     let request_body = body.map(|v| {
         if v.is_array() {
@@ -382,11 +412,30 @@ fn build_api_request(
         filters,
         order,
         range,
-        preferences,
+        preferences: preferences.clone(),
         body: request_body,
         on_conflict,
         columns,
         logic_filters: Vec::new(), // TODO: parse and/or logic from query params
+    }
+}
+
+/// Build an [`ExecContext`] from configuration and request preferences.
+///
+/// In a full implementation, this would also extract the JWT role and claims.
+/// For now, we use the anonymous role from config.
+fn build_exec_context(config: &Config, preferences: &Preferences) -> ExecContext {
+    let tx_end = preferences.tx.and_then(|tx| match tx {
+        PreferTx::Commit => Some(TxEnd::Commit),
+        PreferTx::Rollback => Some(TxEnd::Rollback),
+    });
+
+    ExecContext {
+        role: config.anon_role.clone(),
+        claims: None, // TODO: extract from JWT when auth is implemented
+        pre_request: config.pre_request.clone(),
+        statement_timeout: config.statement_timeout_ms,
+        tx_end,
     }
 }
 

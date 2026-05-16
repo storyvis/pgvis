@@ -20,6 +20,7 @@
 //! println!("Found {} tables", cache.tables.len());
 //! ```
 
+pub mod execute;
 pub mod introspect;
 
 use deadpool_postgres::{Config as PoolConfig, Pool, Runtime};
@@ -96,12 +97,13 @@ impl Backend for PgBackend {
 
     fn execute(
         &self,
-        _ctx: &ExecContext,
+        ctx: &ExecContext,
         sql: &str,
         params: &[Value],
     ) -> BoxFuture<'_, Result<QueryResult, Error>> {
         let sql = sql.to_string();
         let params = params.to_vec();
+        let ctx = ctx.clone();
         Box::pin(async move {
             let client = self
                 .pool
@@ -114,36 +116,7 @@ impl Backend for PgBackend {
                     hint: None,
                 })?;
 
-            // Convert serde_json::Value params to tokio_postgres params
-            // For now, execute raw SQL — params binding will be built out in Phase 5
-            let rows = client
-                .query(&sql, &[] as &[&(dyn tokio_postgres::types::ToSql + Sync)])
-                .await
-                .map_err(|e| Error::Execution {
-                    message: format!("query error: {e}"),
-                    db_code: e.code().map(|c| c.code().to_string()),
-                    detail: None,
-                    hint: None,
-                })?;
-
-            // TODO: Extract body/count/headers/status from CTE-wrapped result
-            let body = if rows.is_empty() {
-                Value::Array(vec![])
-            } else {
-                // Placeholder — will be replaced by proper CTE result extraction
-                Value::Array(vec![])
-            };
-
-            let _ = params; // suppress unused warning until Phase 5
-
-            Ok(QueryResult {
-                body,
-                total_count: None,
-                page_total: None,
-                response_status: None,
-                response_headers: None,
-                was_insert: None,
-            })
+            execute::execute_query(&client, &ctx, &sql, &params).await
         })
     }
 

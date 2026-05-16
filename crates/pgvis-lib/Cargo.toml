@@ -1,5 +1,5 @@
 [package]
-name = "pgvis-embed"
+name = "pgvis-lib"
 description = "Friendly facade for embedding pgvis in any Rust application"
 version.workspace = true
 edition.workspace = true
@@ -14,8 +14,13 @@ workspace = true
 pgvis-core = { path = "../pgvis-core" }
 pgvis-postgres = { path = "../pgvis-postgres" }
 pgvis-router = { path = "../pgvis-router" }
+pgvis-mcp = { path = "../pgvis-mcp", optional = true }
 axum.workspace = true
 tokio.workspace = true
 arc-swap.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
+
+[features]
+default = ["mcp"]
+mcp = ["dep:pgvis-mcp"]

@@ -5,7 +5,7 @@ members = [
   "crates/pgvis-postgres",
   "crates/pgvis-router",
   "crates/pgvis-mcp",
-  "crates/pgvis-embed",
+  "crates/pgvis-lib",
   "crates/pgvis-server",
 ]
 
@@ -61,6 +61,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 thiserror = "2"
 anyhow = "1"
 futures = "0.3"
+bytes = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

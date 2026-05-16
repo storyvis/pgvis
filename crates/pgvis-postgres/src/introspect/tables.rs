@@ -4,6 +4,7 @@ use indexmap::IndexMap;
 use pgvis_core::cache::{Column, QualifiedIdentifier, Table, UniqueConstraint};
 use pgvis_core::error::Error;
 use serde::Deserialize;
+use tokio_postgres::types::Type;
 use tokio_postgres::Client;
 
 /// SQL query for tables introspection (loaded at compile time).
@@ -30,10 +31,17 @@ struct ColumnJson {
 /// Returns an ordered map of `QualifiedIdentifier → Table`.
 pub async fn query_tables(
     client: &Client,
-    schemas: &[&str],
+    schemas: &[String],
 ) -> Result<IndexMap<QualifiedIdentifier, Table>, Error> {
+    // Use prepare_typed to explicitly tell Postgres the param is TEXT[].
+    // Without this, Postgres infers regnamespace[] from the cast in the SQL,
+    // and tokio-postgres can't serialize String into regnamespace.
+    let stmt = client
+        .prepare_typed(TABLES_SQL, &[Type::TEXT_ARRAY])
+        .await
+        .map_err(|e| Error::Introspection(format!("tables query prepare failed: {e}")))?;
     let rows = client
-        .query(TABLES_SQL, &[&schemas])
+        .query(&stmt, &[&schemas])
         .await
         .map_err(|e| Error::Introspection(format!("tables query failed: {e}")))?;
 
