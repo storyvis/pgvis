@@ -30,6 +30,11 @@ enum Cmd {
         #[arg(short, long, default_value = "0.0.0.0:3000", env = "PGVIS_BIND")]
         bind: String,
 
+        /// Which database schemas to expose (comma-separated or repeated).
+        /// Defaults to "public".
+        #[arg(short, long, env = "PGVIS_SCHEMAS", value_delimiter = ',')]
+        schema: Vec<String>,
+
         /// Also serve MCP over Streamable HTTP at /mcp endpoint.
         #[arg(long, default_value = "false")]
         mcp_http: bool,
@@ -55,14 +60,20 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    let config = load_config(cli.config.as_deref())?;
+    let mut config = load_config(cli.config.as_deref())?;
 
     match cli.cmd.unwrap_or(Cmd::Serve {
         bind: "0.0.0.0:3000".into(),
+        schema: vec![],
         mcp_http: false,
     }) {
-        Cmd::Serve { bind, mcp_http } => {
-            tracing::info!(dsn = %cli.dsn, bind = %bind, mcp_http, "starting pgvis server");
+        Cmd::Serve { bind, schema, mcp_http } => {
+            // Override schemas from CLI if provided
+            if !schema.is_empty() {
+                config.schemas = schema;
+            }
+
+            tracing::info!(dsn = %cli.dsn, bind = %bind, schemas = ?config.schemas, mcp_http, "starting pgvis server");
 
             let mut builder = pgvis_lib::Builder::new(&cli.dsn).config(config);
 

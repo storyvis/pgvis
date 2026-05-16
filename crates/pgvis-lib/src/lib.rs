@@ -172,11 +172,15 @@ impl Builder {
     /// Returns an error if the database connection or introspection fails.
     pub async fn build_components(self) -> Result<Components, pgvis_core::error::Error> {
         let backend = pgvis_postgres::PgBackend::new(&self.dsn)?;
-        let cache = Arc::new(ArcSwap::new(Arc::new(
-            backend.introspect(&IntrospectConfig::default()).await?,
-        )));
-
         let config = Arc::new(self.resolve_config());
+
+        let introspect_config = IntrospectConfig {
+            schemas: config.schemas.clone(),
+            extra_search_path: config.extra_search_path.clone(),
+        };
+        let cache = Arc::new(ArcSwap::new(Arc::new(
+            backend.introspect(&introspect_config).await?,
+        )));
         let dialect = Arc::new(backend.dialect().clone());
         let backend: Arc<dyn Backend> = Arc::new(backend);
 

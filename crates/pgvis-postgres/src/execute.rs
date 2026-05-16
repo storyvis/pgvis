@@ -65,6 +65,11 @@ impl ToSql for TextParam<'_> {
                         return (f as f32).to_sql(ty, out);
                     }
                 }
+                if *ty == Type::NUMERIC {
+                    let s = n.to_string();
+                    encode_numeric_str(&s, out)?;
+                    return Ok(IsNull::No);
+                }
                 // Fallback: send as text
                 let s = n.to_string();
                 s.as_str().to_sql(&Type::TEXT, out)
@@ -77,11 +82,23 @@ impl ToSql for TextParam<'_> {
                     s.to_sql(&Type::TEXT, out)
                 }
             }
-            // Arrays and objects → serialize as JSON text
+            // Arrays and objects → serialize as JSON
             other => {
                 let s = serde_json::to_string(other)
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Sync + Send>)?;
-                s.as_str().to_sql(&Type::TEXT, out)
+                if *ty == Type::JSONB {
+                    // JSONB binary format: version byte (1) + JSON text
+                    use bytes::BufMut;
+                    out.put_u8(1); // JSONB version
+                    out.extend_from_slice(s.as_bytes());
+                    Ok(IsNull::No)
+                } else if *ty == Type::JSON {
+                    // JSON binary format is just the text
+                    s.as_str().to_sql(&Type::TEXT, out)
+                } else {
+                    // Unknown type — send as text (Postgres will try to coerce)
+                    s.as_str().to_sql(&Type::TEXT, out)
+                }
             }
         }
     }
@@ -101,7 +118,7 @@ fn encode_str_as_type(
     out: &mut bytes::BytesMut,
 ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
     match *ty {
-        Type::INT4 => {
+        Type::INT4 | Type::OID => {
             let v: i32 = s.parse()?;
             v.to_sql(ty, out)
         }
@@ -121,6 +138,12 @@ fn encode_str_as_type(
             let v: f64 = s.parse()?;
             v.to_sql(ty, out)
         }
+        Type::NUMERIC => {
+            // Postgres NUMERIC binary wire format: encode digits in base-10000.
+            // ndigits(i16), weight(i16), sign(u16), dscale(u16), digits(i16[])
+            encode_numeric_str(s, out)?;
+            Ok(IsNull::No)
+        }
         Type::BOOL => {
             let v = matches!(s, "true" | "t" | "yes" | "1");
             v.to_sql(ty, out)
@@ -128,6 +151,105 @@ fn encode_str_as_type(
         // TEXT, VARCHAR, NAME, UNKNOWN, and everything else: send as text
         _ => s.to_sql(&Type::TEXT, out),
     }
+}
+
+/// Encode a decimal string into Postgres NUMERIC binary format.
+///
+/// Wire format: ndigits(i16) weight(i16) sign(u16) dscale(u16) digits(i16[])
+/// Each digit is a base-10000 digit (0–9999).
+fn encode_numeric_str(
+    s: &str,
+    out: &mut bytes::BytesMut,
+) -> Result<(), Box<dyn std::error::Error + Sync + Send>> {
+    use bytes::BufMut;
+
+    let s = s.trim();
+    if s.eq_ignore_ascii_case("nan") {
+        out.put_i16(0); // ndigits
+        out.put_i16(0); // weight
+        out.put_u16(0xC000); // sign = NaN
+        out.put_u16(0); // dscale
+        return Ok(());
+    }
+
+    let (sign, s) = if let Some(rest) = s.strip_prefix('-') {
+        (0x4000u16, rest)
+    } else if let Some(rest) = s.strip_prefix('+') {
+        (0x0000u16, rest)
+    } else {
+        (0x0000u16, s)
+    };
+
+    // Split integer part and fractional part
+    let (int_part, frac_part) = match s.split_once('.') {
+        Some((i, f)) => (i, f),
+        None => (s, ""),
+    };
+
+    let dscale = frac_part.len() as u16;
+
+    // Remove leading zeros from integer part
+    let int_part = int_part.trim_start_matches('0');
+
+    // Build a combined digit string: integer part + fractional part (padded to multiple of 4)
+    let int_len = int_part.len();
+
+    // Pad integer part to multiple of 4 from the left
+    let int_pad = (4 - int_len % 4) % 4;
+    let mut full_digits = "0".repeat(int_pad);
+    full_digits.push_str(int_part);
+    full_digits.push_str(frac_part);
+    // Pad fractional part to multiple of 4 from the right
+    let frac_pad = (4 - full_digits.len() % 4) % 4;
+    for _ in 0..frac_pad {
+        full_digits.push('0');
+    }
+
+    // Convert groups of 4 characters to base-10000 digits
+    let mut digits: Vec<i16> = Vec::new();
+    for chunk in full_digits.as_bytes().chunks(4) {
+        let d: i16 = std::str::from_utf8(chunk)?.parse()?;
+        digits.push(d);
+    }
+
+    // Remove trailing zero digits (only from fractional part)
+    // Weight = number of base-10000 digits in integer part - 1
+    let int_groups = (int_pad + int_len + 3) / 4; // ceiling division
+    let weight: i16 = if int_len == 0 && frac_part.is_empty() {
+        0
+    } else if int_len == 0 {
+        // Pure fractional: weight is negative
+        // e.g. 0.0001 => first non-zero in position -1
+        -1 - (int_pad as i16 / 4)
+    } else {
+        (int_groups as i16) - 1
+    };
+
+    // Trim trailing zero digits
+    while digits.last() == Some(&0) && digits.len() > int_groups {
+        digits.pop();
+    }
+    // Trim leading zero digits (all-zero case)
+    while digits.first() == Some(&0) && digits.len() > 1 {
+        digits.remove(0);
+    }
+
+    // Handle pure zero
+    let (ndigits, weight, digits) = if digits.is_empty() || (digits.len() == 1 && digits[0] == 0) {
+        (0i16, 0i16, vec![])
+    } else {
+        (digits.len() as i16, weight, digits)
+    };
+
+    out.put_i16(ndigits);
+    out.put_i16(weight);
+    out.put_u16(sign);
+    out.put_u16(dscale);
+    for d in &digits {
+        out.put_i16(*d);
+    }
+
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

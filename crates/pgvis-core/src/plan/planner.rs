@@ -193,9 +193,18 @@ fn plan_mutate(
         RequestMethod::Post => {
             let payload_columns = extract_payload_columns(&request.body);
             let is_bulk = matches!(&request.body, Some(RequestBody::Bulk(_)));
-            let on_conflict = request.on_conflict.as_ref().map(|col| ResolvedConflict {
-                columns: vec![col.clone()],
-                resolution: ConflictResolution::MergeDuplicates,
+            let on_conflict = request.on_conflict.as_ref().map(|col| {
+                let columns: Vec<String> = col.split(',').map(|s| s.trim().to_string()).collect();
+                let resolution = match request.preferences.resolution {
+                    Some(crate::preferences::PreferResolution::IgnoreDuplicates) => {
+                        ConflictResolution::IgnoreDuplicates
+                    }
+                    _ => ConflictResolution::MergeDuplicates,
+                };
+                ResolvedConflict {
+                    columns,
+                    resolution,
+                }
             });
             MutationType::Insert {
                 payload_columns,
@@ -223,6 +232,7 @@ fn plan_mutate(
         embeds,
         count,
         preferences: request.preferences.clone(),
+        body: request.body.clone(),
     }))
 }
 
@@ -288,6 +298,7 @@ fn plan_call(
         returning,
         is_singular,
         preferences: request.preferences.clone(),
+        body: request.body.clone(),
     }))
 }
 

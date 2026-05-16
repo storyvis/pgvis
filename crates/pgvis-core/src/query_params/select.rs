@@ -66,14 +66,7 @@ fn field_or_relation(input: &mut &str) -> Result<SelectItem> {
     // Star is a complete item by itself (no decorations).
     if input.starts_with('*') {
         '*'.parse_next(input)?;
-        return Ok(SelectItem::Field(FieldSelect {
-            name: "*".into(),
-            alias: None,
-            json_path: vec![],
-            cast: None,
-            aggregate: None,
-            aggregate_cast: None,
-        }));
+        return Ok(SelectItem::Star);
     }
 
     let alias = opt(terminated(field_name, alias_sep)).parse_next(input)?;
@@ -216,11 +209,7 @@ mod tests {
     fn parse_star() {
         let result = parse_select("*").unwrap();
         assert_eq!(result.len(), 1);
-        if let SelectItem::Field(f) = &result[0] {
-            assert_eq!(f.name, "*");
-        } else {
-            panic!("expected field");
-        }
+        assert!(matches!(&result[0], SelectItem::Star), "expected Star, got {:?}", result[0]);
     }
 
     #[test]

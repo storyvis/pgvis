@@ -21,21 +21,31 @@ use super::RenderContext;
 pub fn render_call(plan: &CallPlan, ctx: &mut RenderContext<'_>) -> Result<String, Error> {
     let fn_ref = ctx.qualified_table(&plan.function.schema, &plan.function.name);
 
+    // Extract body object for parameter values
+    let body_obj = match &plan.body {
+        Some(crate::plan::types::RequestBody::Single(obj)) => obj.as_object().cloned(),
+        _ => None,
+    };
+
     // Build parameter list with named arguments
     let args: Vec<String> = plan
         .params
         .iter()
         .filter(|p| p.has_value)
         .map(|p| {
-            let placeholder = ctx.push_param(Value::Null); // Actual value from request body
+            let val = body_obj
+                .as_ref()
+                .and_then(|o| o.get(&p.name).cloned())
+                .unwrap_or(Value::Null);
+            let placeholder = ctx.push_param(val);
             format!("{} := {placeholder}", ctx.quote_ident(&p.name))
         })
         .collect();
 
     let args_sql = args.join(", ");
 
-    let sql = if plan.function_info.returns_set {
-        // Set-returning function: SELECT * FROM fn(args)
+    let sql = if plan.function_info.returns_set || plan.function_info.returns_table {
+        // Set-returning or composite-returning function: SELECT * FROM fn(args)
         format!("SELECT * FROM {fn_ref}({args_sql})")
     } else {
         // Scalar/single-row function: SELECT fn(args) AS result
@@ -77,6 +87,7 @@ mod tests {
             returning: vec![ResolvedSelect::Star],
             is_singular: false,
             preferences: Preferences::default(),
+            body: None,
         };
 
         let mut ctx = RenderContext::new(&POSTGRES);
@@ -116,6 +127,7 @@ mod tests {
             returning: vec![ResolvedSelect::Star],
             is_singular: true,
             preferences: Preferences::default(),
+            body: None,
         };
 
         let mut ctx = RenderContext::new(&POSTGRES);
@@ -142,6 +154,7 @@ mod tests {
             returning: vec![ResolvedSelect::Star],
             is_singular: true,
             preferences: Preferences::default(),
+            body: None,
         };
 
         let mut ctx = RenderContext::new(&POSTGRES);

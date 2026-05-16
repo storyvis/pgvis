@@ -386,6 +386,8 @@ pub struct MutatePlan {
     pub count: Option<CountStrategy>,
     /// Response preferences.
     pub preferences: Preferences,
+    /// The request body (used for INSERT/UPDATE values, and RPC arguments).
+    pub body: Option<RequestBody>,
 }
 
 /// The specific mutation operation.
@@ -446,6 +448,8 @@ pub struct CallPlan {
     pub is_singular: bool,
     /// Response preferences.
     pub preferences: Preferences,
+    /// The request body (used for argument values).
+    pub body: Option<RequestBody>,
 }
 
 /// Snapshot of resolved function metadata.

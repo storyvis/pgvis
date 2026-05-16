@@ -187,9 +187,29 @@ pub fn resolve_embed(
         })
         .collect();
 
-    // 3. Disambiguate
+    // 3. Deduplicate by constraint name (same FK appears as both M2O and inverse O2M)
+    //    Prefer the entry where source_table == parent (forward direction)
+    let deduped: Vec<&Relationship> = {
+        let mut seen_constraints: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        let mut result: Vec<&Relationship> = Vec::new();
+        // First pass: add forward matches (source == parent)
+        for r in &matching {
+            if r.source_table == *parent_id && seen_constraints.insert(&r.constraint_name) {
+                result.push(r);
+            }
+        }
+        // Second pass: add reverse matches not already seen
+        for r in &matching {
+            if r.source_table != *parent_id && seen_constraints.insert(&r.constraint_name) {
+                result.push(r);
+            }
+        }
+        result
+    };
+
+    // 4. Disambiguate
     let relationship = disambiguate_relationship(
-        &matching,
+        &deduped,
         parent_table.name(),
         &rel.name,
         rel.hint.as_deref(),

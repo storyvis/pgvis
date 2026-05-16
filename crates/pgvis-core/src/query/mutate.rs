@@ -1,12 +1,14 @@
 //! # Mutate plan → INSERT / UPDATE / DELETE SQL generation.
 //!
-//! Renders a [`MutatePlan`] into the appropriate DML statement with RETURNING clause.
+//! Renders [`MutatePlan`] into parameterised DML SQL. The CTE wrapper in `cte.rs`
+//! wraps this to produce the unified response shape.
 
-use crate::error::Error;
-use crate::plan::types::{ConflictResolution, MutatePlan, MutationType};
+use serde_json::Value;
 
 use super::fragment;
 use super::RenderContext;
+use crate::error::Error;
+use crate::plan::types::{ConflictResolution, MutatePlan, MutationType, RequestBody};
 
 /// Render a [`MutatePlan`] into the inner DML SQL (without CTE wrapper).
 ///
@@ -45,22 +47,52 @@ fn render_insert(
         return Ok(sql);
     }
 
+    // Extract body object(s) for values
+    let body_objects = extract_body_objects(&plan.body);
+
     // Column list
     let col_list: Vec<String> = columns.iter().map(|c| ctx.quote_ident(c)).collect();
     let col_sql = col_list.join(", ");
 
-    // Value placeholders
-    let placeholders: Vec<String> = columns
-        .iter()
-        .map(|_col| ctx.push_param(serde_json::Value::Null)) // Actual values come from request body at execution time
-        .collect();
-    let values_sql = placeholders.join(", ");
-
-    let mut sql = format!("INSERT INTO {table_ref} ({col_sql}) VALUES ({values_sql})");
+    let mut sql = if body_objects.len() <= 1 {
+        // Single-row INSERT
+        let obj = body_objects.first();
+        let placeholders: Vec<String> = columns
+            .iter()
+            .map(|col| {
+                let val = obj
+                    .and_then(|o| o.get(col).cloned())
+                    .unwrap_or(Value::Null);
+                ctx.push_param(val)
+            })
+            .collect();
+        let values_sql = placeholders.join(", ");
+        format!("INSERT INTO {table_ref} ({col_sql}) VALUES ({values_sql})")
+    } else {
+        // Multi-row INSERT: VALUES (...), (...), ...
+        let rows_sql: Vec<String> = body_objects
+            .iter()
+            .map(|obj| {
+                let placeholders: Vec<String> = columns
+                    .iter()
+                    .map(|col| {
+                        let val = obj.get(col).cloned().unwrap_or(Value::Null);
+                        ctx.push_param(val)
+                    })
+                    .collect();
+                format!("({})", placeholders.join(", "))
+            })
+            .collect();
+        format!(
+            "INSERT INTO {table_ref} ({col_sql}) VALUES {}",
+            rows_sql.join(", ")
+        )
+    };
 
     // ON CONFLICT clause (upsert)
     if let Some(conflict) = on_conflict {
-        let conflict_cols: Vec<String> = conflict.columns.iter().map(|c| ctx.quote_ident(c)).collect();
+        let conflict_cols: Vec<String> =
+            conflict.columns.iter().map(|c| ctx.quote_ident(c)).collect();
         let conflict_sql = conflict_cols.join(", ");
 
         match conflict.resolution {
@@ -109,11 +141,18 @@ fn render_update(
 ) -> Result<String, Error> {
     let table_alias = &plan.target.name;
 
+    // Extract body for values
+    let body_objects = extract_body_objects(&plan.body);
+    let obj = body_objects.first();
+
     // SET clause
     let set_clauses: Vec<String> = columns
         .iter()
         .map(|c| {
-            let placeholder = ctx.push_param(serde_json::Value::Null);
+            let val = obj
+                .and_then(|o| o.get(c).cloned())
+                .unwrap_or(Value::Null);
+            let placeholder = ctx.push_param(val);
             format!("{} = {placeholder}", ctx.quote_ident(c))
         })
         .collect();
@@ -178,14 +217,38 @@ fn append_returning(sql: &mut String, _plan: &MutatePlan, ctx: &RenderContext<'_
     sql.push_str(" RETURNING *");
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Extract body objects as a Vec of serde_json Maps.
+fn extract_body_objects(
+    body: &Option<RequestBody>,
+) -> Vec<&serde_json::Map<String, Value>> {
+    match body {
+        Some(RequestBody::Single(obj)) => {
+            if let Some(map) = obj.as_object() {
+                vec![map]
+            } else {
+                vec![]
+            }
+        }
+        Some(RequestBody::Bulk(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_object())
+            .collect(),
+        _ => vec![],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::cache::QualifiedIdentifier;
     use crate::dialect::POSTGRES;
     use crate::plan::types::{
-        MutatePlan, MutationType, ResolvedConflict, ConflictResolution,
-        ResolvedRange, ResolvedSelect, ResolvedTableInfo,
+        ConflictResolution, MutatePlan, MutationType, ResolvedConflict, ResolvedRange,
+        ResolvedSelect, ResolvedTableInfo,
     };
     use crate::preferences::Preferences;
 
@@ -208,10 +271,17 @@ mod tests {
             filters: vec![],
             logic_filters: vec![],
             order: vec![],
-            range: ResolvedRange { limit: None, offset: None },
+            range: ResolvedRange {
+                limit: None,
+                offset: None,
+            },
             embeds: vec![],
             count: None,
             preferences: Preferences::default(),
+            body: Some(RequestBody::Single(serde_json::json!({
+                "name": "Alice",
+                "email": "alice@example.com"
+            }))),
         }
     }
 
@@ -268,10 +338,14 @@ mod tests {
             }],
             logic_filters: vec![],
             order: vec![],
-            range: ResolvedRange { limit: None, offset: None },
+            range: ResolvedRange {
+                limit: None,
+                offset: None,
+            },
             embeds: vec![],
             count: None,
             preferences: Preferences::default(),
+            body: None,
         };
 
         let mut ctx = RenderContext::new(&POSTGRES);

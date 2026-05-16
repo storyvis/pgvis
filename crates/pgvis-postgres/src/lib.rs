@@ -65,6 +65,12 @@ impl PgBackend {
     pub fn new(dsn: &str) -> Result<Self, Error> {
         let mut cfg = PoolConfig::new();
         cfg.url = Some(dsn.to_string());
+        // Default pool size of num_cpus can be too small for concurrent workloads.
+        // Set a reasonable minimum of 16 connections.
+        cfg.pool = Some(deadpool_postgres::PoolConfig {
+            max_size: 16,
+            ..Default::default()
+        });
 
         let pool = cfg
             .create_pool(Some(Runtime::Tokio1), NoTls)
