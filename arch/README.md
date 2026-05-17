@@ -31,9 +31,9 @@ unchanged. It differs in three structural ways:
 
 ```mermaid
 flowchart TD
-    HTTP[HTTP clients<br/>curl, supabase-js, browsers] --> REST[pgvis-rest<br/>axum router + OpenAPI]
+    HTTP[HTTP clients<br/>curl, supabase-js, browsers] --> REST[pgvis-router<br/>axum router + OpenAPI]
     LLM[LLM agents] --> MCP[pgvis-mcp<br/>tool + resource server]
-    EMB[Host Rust app] --> EMBED[pgvis-embed<br/>Builder facade]
+    EMB[Host Rust app] --> EMBED[pgvis-lib<br/>Builder facade]
 
     REST --> CORE
     MCP --> CORE
@@ -60,13 +60,13 @@ dependency (no database driver, no HTTP framework).
 ```mermaid
 flowchart LR
     core[pgvis-core] --> pg[pgvis-postgres]
-    core --> rest[pgvis-rest]
+    core --> router[pgvis-router]
     core --> mcp[pgvis-mcp]
-    pg --> embed[pgvis-embed]
-    rest --> embed
-    core --> embed
-    pg --> server[pgvis-server]
-    rest --> server
+    pg --> lib[pgvis-lib]
+    router --> lib
+    mcp --> lib
+    core --> lib
+    lib --> server[pgvis-server]
     core --> server
 ```
 
@@ -74,10 +74,10 @@ flowchart LR
 | ------- | ------ | ------------------ |
 | [pgvis-core](../crates/pgvis-core) | I/O-free engine: parser, plan layer, SQL builder, schema cache, `Backend`/`Dialect`/`Error`/`Config` | [lib.rs](../crates/pgvis-core/src/lib.rs) |
 | [pgvis-postgres](../crates/pgvis-postgres) | `Backend` impl for Postgres (pool + introspection) | [lib.rs](../crates/pgvis-postgres/src/lib.rs) |
-| [pgvis-rest](../crates/pgvis-rest) | axum router + OpenAPI generator | [routing.rs](../crates/pgvis-rest/src/routing.rs) |
+| [pgvis-router](../crates/pgvis-router) | axum router + OpenAPI generator | [routing.rs](../crates/pgvis-router/src/routing.rs) |
 | [pgvis-mcp](../crates/pgvis-mcp) | MCP tools/resources from the same cache | [tools.rs](../crates/pgvis-mcp/src/tools.rs) |
-| [pgvis-embed](../crates/pgvis-embed) | One-liner `Builder` facade for host apps | [lib.rs](../crates/pgvis-embed/src/lib.rs) |
-| [pgvis-server](../crates/pgvis-server) | `pgvis` CLI binary (`serve`/`openapi`/`inspect`) | [main.rs](../crates/pgvis-server/src/main.rs) |
+| [pgvis-lib](../crates/pgvis-lib) | One-liner `Builder` facade for host apps | [lib.rs](../crates/pgvis-lib/src/lib.rs) |
+| [pgvis-server](../crates/pgvis-server) | `pgvis` CLI binary (`serve`/`mcp`/`openapi`/`inspect`) | [main.rs](../crates/pgvis-server/src/main.rs) |
 
 ## Status legend
 
@@ -95,13 +95,13 @@ Each subsystem section in these docs carries one of:
 | Query-string parser (`query_params`) | `[Implemented]` | winnow parsers for select/filter/order/logic |
 | Plan layer (`plan`) | `[Implemented]` | `ApiRequest` → `ActionPlan`; overload resolution is a TODO |
 | SQL builder (`query`) | `[Implemented]` | CTE-wrapped, dialect-aware; embedding subqueries in progress |
-| Schema cache + Postgres introspection | `[Implemented]` | computed rels / media handlers / view PKs are TODO |
-| `Backend` trait + `Dialect` | `[Implemented]` | Postgres impl present; execute() result extraction is a TODO |
-| REST routing | `[In progress]` | routes + planning wired; SQL exec returns a plan summary |
+| Schema cache + Postgres introspection | `[Implemented]` | typed prepared-statement introspection; computed rels / media handlers / view PKs are TODO |
+| `Backend` trait + `Dialect` | `[Implemented]` | Postgres impl complete — `execute()` runs the transaction and decodes the CTE row |
+| Postgres query execution | `[Implemented]` | full tx pipeline (role / claims / `statement_timeout` / pre-request), text-protocol param binding, CTE result decode |
+| REST routing | `[Implemented]` | routes + planning + `Backend::execute` wired; integration-tested against Postgres; JWT and `and`/`or` logic-filter parsing still TODO |
+| `pgvis-server` binary | `[Implemented]` | `serve` / `mcp` / `openapi` / `inspect` wired through `pgvis-lib`; TOML config layering still stubbed (`load_config` returns defaults) |
 | OpenAPI generation | `[In progress]` | paths/operations emitted; schemas/parameters minimal |
-| MCP tools/resources | `[In progress]` | tools + dispatch wired; SQL exec returns a plan summary |
-| Postgres query execution | `[In progress]` | pool wired; CTE result decoding + param binding TODO |
-| `pgvis-server` binary | `[In progress]` | CLI parsed; subcommands print scaffolding notices |
+| MCP tools/resources | `[In progress]` | tools + dispatch + discovery wired, but no backend is passed to `McpServer`, so a tool call still returns a plan summary ([tools.rs](../crates/pgvis-mcp/src/tools.rs) TODO) |
 | SQLite backend | `[Planned]` | `SQLITE` dialect defined; no driver crate yet |
 
 ## Table of contents

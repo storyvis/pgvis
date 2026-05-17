@@ -5,8 +5,8 @@ split between them is the central design idea:
 
 - **`Backend` trait** — the *async I/O boundary*. Connection pooling, query
   execution, schema introspection, change notifications. One trait, implemented
-  per database. **Status: `[Implemented]` for Postgres**, with a TODO seam at
-  the execute-result boundary.
+  per database. **Status: `[Implemented]` for Postgres** — `introspect` and
+  `execute` are complete; `watch_schema` (LISTEN/NOTIFY) is the remaining seam.
 - **`Dialect` struct** — *pure data* describing SQL syntax and capability
   differences. No I/O, no trait, no dynamic dispatch. **Status: `[Implemented]`**
   (`POSTGRES` and `SQLITE` constants both defined).
@@ -81,12 +81,16 @@ the statement. On a backend without `SET LOCAL` these fields are informational.
 
 - `introspect()` — gets a pooled client and calls
   `introspect::load_schema_cache` ([05-schema-cache.md](05-schema-cache.md)).
-- `execute()` — gets a pooled client and runs the SQL. **`[In progress]` TODO
-  seam:** JSON→`ToSql` parameter binding and CTE-result decoding are not yet
-  implemented (the code runs the SQL with no bound params and returns an empty
-  body); this is why the surfaces currently return a plan summary. Tracked in
-  [08-future-scope.md](08-future-scope.md).
-- `watch_schema()` — returns `None` today; `LISTEN/NOTIFY` is a TODO.
+- `execute()` — **`[Implemented]`**: gets a pooled client and calls
+  `execute::execute_query`
+  ([execute.rs](../crates/pgvis-postgres/src/execute.rs)), which opens a
+  transaction, applies `ExecContext` (`SET LOCAL role` / `request.jwt.claims` /
+  `statement_timeout` / pre-request), binds `serde_json::Value` params via a
+  `TextParam` `ToSql` wrapper (text-protocol; Postgres coerces by inferred
+  type), runs the CTE-wrapped statement, decodes the single row into
+  `QueryResult`, and COMMITs/ROLLBACKs per `tx_end`.
+- `watch_schema()` — returns `None` today; `LISTEN/NOTIFY` is a TODO
+  ([08-future-scope.md](08-future-scope.md)).
 - `dialect()` — returns `&pgvis_core::dialect::POSTGRES`.
 
 ## The `Dialect` struct

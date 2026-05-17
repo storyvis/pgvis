@@ -84,7 +84,7 @@ pub fn plan_request(
 request: resolved `schema` and `target`, a `RequestMethod`, an `is_rpc` flag,
 the parsed `select`/`filters`/`order`/`range`/`logic_filters`, parsed
 `Preferences`, and an optional `RequestBody` (`Single` / `Bulk` / `Raw`). Both
-`pgvis-rest` and `pgvis-mcp` construct this — nothing below this line knows
+`pgvis-router` and `pgvis-mcp` construct this — nothing below this line knows
 which surface it came from.
 
 ### What the planner does

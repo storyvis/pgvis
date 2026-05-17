@@ -1,8 +1,8 @@
 # 06 — Errors, Configuration, Preferences
 
 The three cross-cutting concerns that every surface and the core share.
-**Status: `[Implemented]`** for the types and parsing; consumption at the
-execute boundary is `[In progress]` where noted.
+**Status: `[Implemented]`** for the types and parsing. The REST surface now
+consumes them at the execute boundary; MCP does not yet (no backend wired).
 
 ## Errors
 
@@ -47,7 +47,7 @@ undefined table → 404 — before falling back to the code's default status.
 
 Adapters consume this directly: the REST handler sets the response status from
 `err.http_status()` and the body from `err.code().as_str()` + `err.to_string()`
-([routing.rs](../crates/pgvis-rest/src/routing.rs)); MCP returns
+([routing.rs](../crates/pgvis-router/src/routing.rs)); MCP returns
 `[CODE] message` ([tools.rs](../crates/pgvis-mcp/src/tools.rs)). Plan-time
 dialect rejections surface here as `Unsupported`/`PGV001`
 ([03-backends-and-dialects.md](03-backends-and-dialects.md)).
@@ -88,7 +88,7 @@ stay parallel:
 - `default_schema` — used when `schema_in_path = false`.
 - `mcp_separator` — char joining schema and verb in MCP tool names (`/` default).
 - Helpers: `mcp_tool_name(schema, verb, target)`, `schema_path_prefix(schema)`,
-  `normalized_prefix()` — used by both [routing.rs](../crates/pgvis-rest/src/routing.rs)
+  `normalized_prefix()` — used by both [routing.rs](../crates/pgvis-router/src/routing.rs)
   and [tools.rs](../crates/pgvis-mcp/src/tools.rs). The routing modes are
   tabulated in [04-surfaces.md](04-surfaces.md).
 
@@ -123,6 +123,8 @@ are both accepted.
 `Preferences` flows unchanged through `ApiRequest` into every `ActionPlan`
 variant ([02-core-pipeline.md](02-core-pipeline.md)); the dialect gates marked
 above are enforced in the plan layer
-([03-backends-and-dialects.md](03-backends-and-dialects.md)). Several of these
-take full effect only once the execute boundary lands —
-[08-future-scope.md](08-future-scope.md).
+([03-backends-and-dialects.md](03-backends-and-dialects.md)). On REST these now
+take effect: `tx`, `statement_timeout`, role/claims, and count flow through
+`ExecContext` into the Postgres `execute` path
+([execute.rs](../crates/pgvis-postgres/src/execute.rs)). MCP applies them only
+once a backend is wired into its server — [08-future-scope.md](08-future-scope.md).
