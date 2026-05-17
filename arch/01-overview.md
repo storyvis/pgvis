@@ -51,7 +51,7 @@ is the map.
 
 ```mermaid
 flowchart LR
-    REQ[HTTP request / MCP tool call] --> ADP[Adapter:<br/>pgvis-rest or pgvis-mcp]
+    REQ[HTTP request / MCP tool call] --> ADP[Adapter:<br/>pgvis-router or pgvis-mcp]
     ADP -->|parse query string,<br/>headers, body| AR[ApiRequest]
     AR --> PR["plan_request()<br/>(pgvis-core::plan)"]
     SC[(SchemaCache)] --> PR
@@ -72,10 +72,10 @@ flowchart LR
 
 Trace of `GET /api/public/users?select=id,name&age=gte.18&order=id.asc`:
 
-1. **Route match.** `pgvis-rest` registers wildcard routes from
+1. **Route match.** `pgvis-router` registers wildcard routes from
    `RoutingConfig`. With `schema_in_path = true` and prefix `api`, the path
    `/api/{schema}/{target}` matches; `schema = "public"`, `target = "users"`
-   ([routing.rs](../crates/pgvis-rest/src/routing.rs)).
+   ([routing.rs](../crates/pgvis-router/src/routing.rs)).
 2. **Build `ApiRequest`.** `build_api_request` parses query params and headers:
    `select=` via `query_params::parse_select`, `age=gte.18` via
    `query_params::parse_filter`, `order=` via `query_params::parse_order`, the
@@ -91,9 +91,13 @@ Trace of `GET /api/public/users?select=id,name&age=gte.18&order=id.asc`:
    `page_total` (+ GUC columns on Postgres). Parameters are pushed positionally
    (`$1` Postgres, `?` SQLite) ([query/mod.rs](../crates/pgvis-core/src/query/mod.rs)).
 5. **Execute.** `Backend::execute` runs the statement on a pooled connection
-   ([pgvis-postgres/src/lib.rs](../crates/pgvis-postgres/src/lib.rs)). *Status:
-   pooling is wired; CTE result decoding and JSON-param binding are TODO seams,
-   so the REST/MCP layers currently return a plan summary instead of rows — see
+   ([pgvis-postgres/src/lib.rs](../crates/pgvis-postgres/src/lib.rs) →
+   [execute.rs](../crates/pgvis-postgres/src/execute.rs)). For Postgres this is
+   implemented: it opens a transaction, applies `ExecContext` (`SET LOCAL role`
+   / `request.jwt.claims` / `statement_timeout` / pre-request), binds parameters
+   via the text protocol, runs the CTE-wrapped statement, and decodes the single
+   result row into `QueryResult`. *The MCP surface still returns a plan summary
+   because no backend is wired into its server — see
    [08-future-scope.md](08-future-scope.md).*
 6. **Respond.** The adapter maps `QueryResult` (or an `Error` via its
    `http_status()` / `PGRST*` code) to an HTTP response or an MCP tool result.

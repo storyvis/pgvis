@@ -131,20 +131,21 @@ Rationale · Consequences · Status.**
 - **Decision.** Default routing is `/{prefix}/{schema}/{table}`; a
   header/flat-compat mode remains for drop-in PostgREST replacement
   ([config.rs](../crates/pgvis-core/src/config.rs),
-  [routing.rs](../crates/pgvis-rest/src/routing.rs)).
+  [routing.rs](../crates/pgvis-router/src/routing.rs)).
 - **Rationale.** Path-based schema is bookmarkable, proxy/CDN-safe, and
   self-documenting; compat mode preserves migration.
 - **Consequences.** + Clear multi-schema URLs. − Two routing modes to maintain
   and document.
-- **Status.** `[Implemented]` (routing modes), surface wiring `[In progress]`.
+- **Status.** `[Implemented]` — routing modes and REST surface wiring are live;
+  MCP shares the modes but its execute path is still stubbed.
 
 ## 10. Routes and OpenAPI from one source, one pass
 
 - **Context.** Spec/route drift is a chronic API-server problem.
 - **Decision.** `generate_spec` iterates the same `SchemaCache` +
   `RoutingConfig` that `build_app` uses
-  ([openapi.rs](../crates/pgvis-rest/src/openapi.rs),
-  [routing.rs](../crates/pgvis-rest/src/routing.rs)).
+  ([openapi.rs](../crates/pgvis-router/src/openapi.rs),
+  [routing.rs](../crates/pgvis-router/src/routing.rs)).
 - **Rationale.** If both are derived from one source, they cannot disagree.
 - **Consequences.** + Spec always matches reality. − Spec richness is bounded by
   cache metadata richness (improves as introspection does).

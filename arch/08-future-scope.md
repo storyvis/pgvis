@@ -7,29 +7,34 @@ honest map of the road ahead, grounded in the current code.
 
 | Milestone | Surfaces | Backends | Theme |
 | ----------- | ---------- | ---------- | ------- |
-| 0.1 | REST + OpenAPI | Postgres | Close the execute boundary; first end-to-end queries |
+| 0.1 | REST + OpenAPI | Postgres | Execute boundary closed; first end-to-end queries (REST, integration-tested) |
 | 0.2 | + MCP (stdio) | Postgres | LLM tool exposure on real data |
 | 0.3 | + SQLite | Postgres + SQLite | Second backend validates the dialect abstraction |
 | 0.4 | MCP over SSE | both | Hosted-agent transport |
 | 1.0 | stable API | both | Semver-pin `build_app` + `Config` + `Backend` |
 
-## The critical seam: query execution
+## The critical seam: query execution `[Closed for Postgres/REST]`
 
-The single most important gap. `PgBackend::execute`
-([pgvis-postgres/src/lib.rs](../crates/pgvis-postgres/src/lib.rs)) acquires a
-pooled connection but does **not** yet:
+This was 0.1's defining gap and is now **closed for Postgres**.
+`PgBackend::execute` ([lib.rs](../crates/pgvis-postgres/src/lib.rs)) calls
+`execute::execute_query`
+([execute.rs](../crates/pgvis-postgres/src/execute.rs)), which:
 
-- bind `serde_json::Value` parameters to `tokio_postgres` `ToSql` types,
-- apply `ExecContext` (open a transaction, `SET LOCAL role`, set
-  `request.jwt.claims`, call `pre_request`, set `statement_timeout`, honor
-  `tx_end`),
-- decode the CTE result row into `QueryResult`
-  (`body`/`page_total`/`total_count`/`response_status`/`response_headers`/`was_insert`).
+- binds `serde_json::Value` parameters via a `TextParam` `ToSql` wrapper
+  (text protocol; Postgres coerces by the inferred parameter type),
+- applies `ExecContext` (BEGIN, `SET LOCAL role`, `request.jwt.claims` +
+  per-claim GUCs, `statement_timeout`, `pre_request`, `tx_end`
+  COMMIT/ROLLBACK),
+- decodes the CTE result row into `QueryResult`
+  (`body`/`page_total`/`total_count`/`response_status`/`response_headers`).
 
-Until this lands, `pgvis-rest` and `pgvis-mcp` return a *plan summary*
-(`{"status":"planned",...}`) instead of rows
-([04-surfaces.md](04-surfaces.md)). Closing this seam is milestone 0.1's
-defining task and unblocks real testing of everything upstream.
+`pgvis-router` (REST) now runs the full `plan_request → render → execute` path
+and is covered by the integration suite in
+[crates/pgvis-server/tests](../crates/pgvis-server/tests). **Still open:**
+`pgvis-mcp` returns a *plan summary* because `pgvis-lib` builds `McpServer`
+without a backend, so MCP never reaches `render`/`execute`
+([04-surfaces.md](04-surfaces.md)); and JWT verification + threading claims
+into `ExecContext` is not yet wired on either surface.
 
 ## Core engine gaps
 
@@ -56,7 +61,7 @@ defining task and unblocks real testing of everything upstream.
 
 ## Introspection gaps
 
-Fields exist on the cache types but are populated empty
+Some fields are still populated empty
 ([05-schema-cache.md](05-schema-cache.md),
 [introspect/mod.rs](../crates/pgvis-postgres/src/introspect/mod.rs)):
 
@@ -65,8 +70,9 @@ Fields exist on the cache types but are populated empty
   introspection pass is a TODO.
 - **Media handlers** — custom `Accept` types via aggregate functions
   (`MediaHandler` defined; query TODO).
-- **Data representations** — domain-type ↔ json/text casts wired into the
-  builder for transparent (de)serialization.
+- **Data representations** — introspection is **done**
+  (`query_representations`); wiring the casts into the SQL builder for
+  transparent (de)serialization is what remains.
 - **`schema_version`** — needed for ETag/staleness; currently `None`.
 - **View primary keys** — view-key-dependency tracing so embedding/`Location`
   works on views.
@@ -78,17 +84,19 @@ Fields exist on the cache types but are populated empty
   signal on a dedicated connection with reconnect/backoff.
 - **SQLite backend.** No `pgvis-sqlite` crate yet; the `SQLITE` dialect and
   builder special-casing are ready ([03-backends-and-dialects.md](03-backends-and-dialects.md)).
-- **`pgvis-embed` wiring.** `Builder::build` constructs a `PgBackend` but
-  returns an empty router; needs introspect + `build_app` +
-  `ArcSwap`/reload-task assembly ([pgvis-embed/src/lib.rs](../crates/pgvis-embed/src/lib.rs)).
-- **`pgvis-server` wiring.** `serve`/`openapi`/`inspect` print scaffolding
-  notices; need figment config load, backend construction, serve loop, and
-  spec/cache dumps ([pgvis-server/src/main.rs](../crates/pgvis-server/src/main.rs)).
+- **MCP execution.** `pgvis-lib` builds `McpServer` with cache/config/dialect
+  only; pass an `Arc<dyn Backend>` and call `render`/`execute` so MCP returns
+  rows instead of a plan summary ([tools.rs](../crates/pgvis-mcp/src/tools.rs)).
+- **`pgvis-server` config layering.** `serve`/`mcp`/`openapi`/`inspect` are
+  wired through `pgvis-lib`, but `load_config` still returns `Config::default()`
+  — figment TOML/`PGVIS_*` layering is stubbed
+  ([pgvis-server/src/main.rs](../crates/pgvis-server/src/main.rs)).
 - **OpenAPI richness.** Request/response JSON Schemas, per-column filter
   parameters, RPC bodies, and `openapi_mode = FollowPrivileges` filtering remain
-  ([openapi.rs](../crates/pgvis-rest/src/openapi.rs)).
-- **Auth enforcement.** `Config` carries JWT/role settings; verifying tokens and
-  threading claims into `ExecContext` is part of closing the execute seam.
+  ([openapi.rs](../crates/pgvis-router/src/openapi.rs)).
+- **Auth enforcement.** `Config` carries JWT/role settings; the execute path
+  already applies `ExecContext.role`/`claims`, but verifying the JWT and
+  populating those fields from it is not yet wired (REST passes `claims: None`).
 
 ## Extensibility notes
 

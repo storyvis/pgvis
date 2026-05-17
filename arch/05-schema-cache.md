@@ -55,7 +55,7 @@ flowchart TD
 | `Routine` | stored function | `params`, `return_type`, `return_type_is_set/_is_composite`, `volatility`, `isolation_level`, hoisted `settings` |
 | `UniqueConstraint` | unique/PK constraint | used for upsert `ON CONFLICT` targeting |
 | `ComputedRelationship` | function-as-relationship | **`[Planned]` data only** — Postgres-only; populated as a TODO |
-| `DataRepresentation` | domain type ↔ json/text cast | **`[Planned]` data only** — Postgres-only; TODO |
+| `DataRepresentation` | domain type ↔ json/text cast | **`[Implemented]`** introspection (`query_representations`, Postgres); builder integration is TODO |
 | `MediaHandler` | custom `Accept` type → aggregate fn | **`[Planned]` data only** — Postgres-only; TODO |
 
 `SchemaCache` exposes lookup helpers used by the planner: `find_table`,
