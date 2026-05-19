@@ -8,7 +8,7 @@ use crate::plan::types::{
     ResolvedOrder, ResolvedSelect,
 };
 use crate::query_params::types::{FilterValue, IsKind, NullsOrder, Operator, OrderDirection};
-use crate::select_ast::{AggregateFunction, JsonOperand, JsonOperation};
+use crate::select_ast::{JsonOperand, JsonOperation};
 use serde_json::Value;
 
 use super::RenderContext;
@@ -430,7 +430,6 @@ pub fn render_group_by(
 pub fn render_limit_offset(
     limit: Option<u64>,
     offset: Option<u64>,
-    _ctx: &mut RenderContext<'_>,
 ) -> Option<String> {
     match (limit, offset) {
         (Some(l), Some(o)) => Some(format!("LIMIT {l} OFFSET {o}")),
@@ -457,17 +456,12 @@ pub fn qualified_column(
     }
 }
 
-/// Render the column list for an aggregate function's SQL name.
-pub fn aggregate_sql_name(func: AggregateFunction) -> &'static str {
-    func.sql_name()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::dialect::POSTGRES;
-    use crate::plan::types::{ResolvedColumn, ResolvedFilter};
-    use crate::query_params::types::{FilterValue, Operator, OrderDirection};
+    use crate::plan::types::ResolvedFilter;
+    use crate::query_params::types::{FilterValue, Operator};
 
     #[test]
     fn test_operator_to_sql() {

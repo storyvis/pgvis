@@ -1,12 +1,15 @@
 //! Post-processing of introspection results.
 //!
 //! These algorithms are backend-agnostic — they operate on the already-populated
-//! `SchemaCache` and infer additional relationships that can't be discovered
+//! [`SchemaCache`] and infer additional relationships that can't be discovered
 //! from a single query.
+//!
+//! Both `pgvis-postgres` and `pgvis-sqlite` call these after their respective
+//! introspection passes.
 
 use std::collections::{HashMap, HashSet};
 
-use pgvis_core::cache::{Cardinality, QualifiedIdentifier, Relationship, SchemaCache};
+use crate::cache::{Cardinality, QualifiedIdentifier, Relationship, SchemaCache};
 
 /// Add inverse relationships for every M2O and O2O relationship.
 ///

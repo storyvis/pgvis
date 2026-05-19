@@ -9,10 +9,10 @@ pub mod tables;
 pub mod relationships;
 pub mod routines;
 pub mod representations;
-pub mod post_process;
 
 use pgvis_core::backend::IntrospectConfig;
 use pgvis_core::cache::SchemaCache;
+use pgvis_core::cache_post_process;
 use pgvis_core::error::Error;
 use tokio_postgres::Client;
 use tracing::info;
@@ -83,9 +83,9 @@ async fn run_introspection(
 
     // Post-processing order matches PostgREST: M2M inference first, then inverse rels.
     // In Haskell: `addInverseRels $ addM2MRels` — right-to-left application.
-    post_process::infer_m2m_relationships(&mut cache);
-    post_process::add_inverse_relationships(&mut cache);
-    post_process::mark_fk_columns(&mut cache);
+    cache_post_process::infer_m2m_relationships(&mut cache);
+    cache_post_process::add_inverse_relationships(&mut cache);
+    cache_post_process::mark_fk_columns(&mut cache);
 
     let table_count = cache.tables.len();
     let rel_count = cache.relationships.len();

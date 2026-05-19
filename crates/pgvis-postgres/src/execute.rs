@@ -869,6 +869,7 @@ mod tests {
             pre_request: Some("auth.pre".to_string()),
             statement_timeout: Some(30000),
             tx_end: None,
+            is_mutation: false,
         };
         let sql = build_session_setup(&ctx).unwrap();
         // Should be a single string with all statements separated by semicolons

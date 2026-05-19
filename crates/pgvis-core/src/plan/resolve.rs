@@ -237,6 +237,11 @@ pub fn resolve_embed(
     let (child_selects, child_embeds) =
         resolve_select_items(cache, target_table, schema, &child_items, dialect, config)?;
 
+    // 7b. Expand Star to explicit columns for embed sub-plans.
+    //     SQLite embeds need explicit column names for json_object(); Postgres
+    //     row_to_json handles both forms identically, so this is safe for all backends.
+    let child_selects = expand_star_for_embed(target_table, child_selects);
+
     // 8. Build child read plan
     let child_plan = ReadPlan {
         target: target_id.clone(),
@@ -580,6 +585,41 @@ fn resolve_logic_node(
             Ok(ResolvedLogicNode::Not(Box::new(resolved_inner)))
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Star expansion for embeds
+// ---------------------------------------------------------------------------
+
+/// Expand `ResolvedSelect::Star` entries into explicit `ResolvedSelect::Column` entries.
+///
+/// This is essential for SQLite embeds which need explicit column names for `json_object()`.
+/// For Postgres, `row_to_json(sub_alias)` works with either form, so expansion is harmless.
+fn expand_star_for_embed(table: &Table, selects: Vec<ResolvedSelect>) -> Vec<ResolvedSelect> {
+    let has_star = selects.iter().any(|s| matches!(s, ResolvedSelect::Star));
+    if !has_star {
+        return selects;
+    }
+
+    let mut expanded = Vec::new();
+    for sel in selects {
+        match sel {
+            ResolvedSelect::Star => {
+                // Expand to all table columns (in ordinal order, preserved by IndexMap)
+                for (col_name, col) in &table.columns {
+                    expanded.push(ResolvedSelect::Column(ResolvedColumn {
+                        name: col_name.clone(),
+                        alias: None,
+                        json_path: vec![],
+                        data_type: col.typ.clone(),
+                        nullable: col.nullable,
+                    }));
+                }
+            }
+            other => expanded.push(other),
+        }
+    }
+    expanded
 }
 
 // ---------------------------------------------------------------------------

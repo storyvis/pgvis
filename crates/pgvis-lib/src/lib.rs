@@ -18,6 +18,19 @@
 //! # }
 //! ```
 //!
+//! # SQLite Support
+//!
+//! ```rust,no_run
+//! use pgvis_lib::Builder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let router = Builder::new("sqlite:./mydb.sqlite3")
+//!     .build()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! # Advanced: Access Internal Components
 //!
 //! ```rust,no_run
@@ -86,6 +99,12 @@ pub use pgvis_router;
 #[cfg(feature = "mcp")]
 pub use pgvis_mcp;
 
+#[cfg(feature = "postgres")]
+pub use pgvis_postgres;
+
+#[cfg(feature = "sqlite")]
+pub use pgvis_sqlite;
+
 // ---------------------------------------------------------------------------
 // Components — the assembled pgvis stack
 // ---------------------------------------------------------------------------
@@ -111,6 +130,44 @@ pub struct Components {
 }
 
 // ---------------------------------------------------------------------------
+// DSN Detection
+// ---------------------------------------------------------------------------
+
+/// Detected database backend type from a DSN string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbKind {
+    /// PostgreSQL (DSN starts with `postgres://` or `postgresql://`)
+    Postgres,
+    /// SQLite (DSN starts with `sqlite:`, or ends with `.db`/`.sqlite`/`.sqlite3`, or is `:memory:`)
+    Sqlite,
+}
+
+/// Detect the database kind from a DSN string.
+///
+/// # Detection rules
+///
+/// - `postgres://...` or `postgresql://...` → Postgres
+/// - `sqlite:...`, `file:...`, or `:memory:` → SQLite
+/// - Ends with `.db`, `.sqlite`, `.sqlite3` → SQLite
+/// - Otherwise → Postgres (backward compatible default)
+pub fn detect_db_kind(dsn: &str) -> DbKind {
+    let lower = dsn.to_lowercase();
+    if lower.starts_with("postgres://") || lower.starts_with("postgresql://") {
+        DbKind::Postgres
+    } else if lower.starts_with("sqlite:")
+        || lower.starts_with("file:")
+        || dsn == ":memory:"
+    {
+        DbKind::Sqlite
+    } else if lower.ends_with(".db") || lower.ends_with(".sqlite") || lower.ends_with(".sqlite3") {
+        DbKind::Sqlite
+    } else {
+        // Default to Postgres for backward compatibility
+        DbKind::Postgres
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Builder
 // ---------------------------------------------------------------------------
 
@@ -118,6 +175,10 @@ pub struct Components {
 ///
 /// This is the single authoritative way to construct the pgvis stack.
 /// Both `pgvis-server` and end-user applications use this builder.
+///
+/// The builder auto-detects the database backend from the DSN:
+/// - `postgres://...` → Postgres backend
+/// - `sqlite:./path.db` or `:memory:` → SQLite backend
 pub struct Builder {
     dsn: String,
     config: Option<Config>,
@@ -128,6 +189,10 @@ pub struct Builder {
 
 impl Builder {
     /// Create a new builder with the given DSN.
+    ///
+    /// The DSN determines which backend to use:
+    /// - `postgres://...` or `postgresql://...` → Postgres
+    /// - `sqlite:path` or `:memory:` → SQLite
     ///
     /// Uses default configuration. Call [`config()`](Self::config) to override.
     pub fn new(dsn: impl Into<String>) -> Self {
@@ -152,6 +217,7 @@ impl Builder {
     /// Set which schemas to expose (convenience for simple cases).
     ///
     /// If [`config()`](Self::config) is also called, that takes precedence.
+    /// For SQLite, schemas are ignored (single `"main"` namespace).
     pub fn schemas(mut self, schemas: Vec<impl Into<String>>) -> Self {
         self.schemas = Some(schemas.into_iter().map(Into::into).collect());
         self
@@ -173,11 +239,7 @@ impl Builder {
     /// Returns an error if the database connection or introspection fails.
     pub async fn build_components(self) -> Result<Components, pgvis_core::error::Error> {
         let config = Arc::new(self.resolve_config());
-        let backend = pgvis_postgres::PgBackend::new(
-            &self.dsn,
-            config.pool_size,
-            config.pool_timeout_ms,
-        )?;
+        let backend = self.build_backend(&config).await?;
 
         let introspect_config = IntrospectConfig {
             schemas: config.schemas.clone(),
@@ -187,7 +249,6 @@ impl Builder {
             backend.introspect(&introspect_config).await?,
         )));
         let dialect = Arc::new(backend.dialect().clone());
-        let backend: Arc<dyn Backend> = Arc::new(backend);
 
         // Build REST router
         let mut app =
@@ -229,11 +290,8 @@ impl Builder {
     #[cfg(feature = "mcp")]
     pub async fn build_mcp_server(self) -> Result<pgvis_mcp::McpServer, pgvis_core::error::Error> {
         let config = Arc::new(self.resolve_config());
-        let backend = pgvis_postgres::PgBackend::new(
-            &self.dsn,
-            config.pool_size,
-            config.pool_timeout_ms,
-        )?;
+        let backend = self.build_backend(&config).await?;
+
         let introspect_config = IntrospectConfig {
             schemas: config.schemas.clone(),
             extra_search_path: config.extra_search_path.clone(),
@@ -246,19 +304,96 @@ impl Builder {
         Ok(pgvis_mcp::McpServer::new(cache, config, dialect))
     }
 
+    /// Create the appropriate backend based on DSN detection.
+    async fn build_backend(
+        &self,
+        config: &Config,
+    ) -> Result<Arc<dyn Backend>, pgvis_core::error::Error> {
+        let db_kind = detect_db_kind(&self.dsn);
+        match db_kind {
+            DbKind::Postgres => {
+                #[cfg(feature = "postgres")]
+                {
+                    let pg = pgvis_postgres::PgBackend::new(
+                        &self.dsn,
+                        config.pool_size,
+                        config.pool_timeout_ms,
+                    )?;
+                    Ok(Arc::new(pg))
+                }
+                #[cfg(not(feature = "postgres"))]
+                {
+                    Err(pgvis_core::error::Error::Internal(
+                        "Postgres support not compiled in (enable `postgres` feature)".into(),
+                    ))
+                }
+            }
+            DbKind::Sqlite => {
+                #[cfg(feature = "sqlite")]
+                {
+                    let sqlite = pgvis_sqlite::SqliteBackend::open(&self.dsn).await?;
+                    Ok(Arc::new(sqlite))
+                }
+                #[cfg(not(feature = "sqlite"))]
+                {
+                    Err(pgvis_core::error::Error::Internal(
+                        "SQLite support not compiled in (enable `sqlite` feature)".into(),
+                    ))
+                }
+            }
+        }
+    }
+
     /// Resolve the effective Config from builder fields.
     fn resolve_config(&self) -> Config {
         if let Some(config) = &self.config {
             config.clone()
         } else {
-            let schemas = self
-                .schemas
-                .clone()
-                .unwrap_or_else(|| vec!["public".to_string()]);
+            let default_schemas = if detect_db_kind(&self.dsn) == DbKind::Sqlite {
+                vec!["main".to_string()]
+            } else {
+                vec!["public".to_string()]
+            };
+            let schemas = self.schemas.clone().unwrap_or(default_schemas);
             Config {
                 schemas,
                 ..Default::default()
             }
         }
+    }
+}
+
+// ===========================================================================
+// Tests
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_postgres() {
+        assert_eq!(detect_db_kind("postgres://localhost/mydb"), DbKind::Postgres);
+        assert_eq!(detect_db_kind("postgresql://localhost/mydb"), DbKind::Postgres);
+        assert_eq!(detect_db_kind("POSTGRES://localhost/mydb"), DbKind::Postgres);
+    }
+
+    #[test]
+    fn test_detect_sqlite() {
+        assert_eq!(detect_db_kind("sqlite:./mydb.db"), DbKind::Sqlite);
+        assert_eq!(detect_db_kind("sqlite::memory:"), DbKind::Sqlite);
+        assert_eq!(detect_db_kind(":memory:"), DbKind::Sqlite);
+        assert_eq!(detect_db_kind("./mydb.sqlite3"), DbKind::Sqlite);
+        assert_eq!(detect_db_kind("/path/to/file.db"), DbKind::Sqlite);
+        assert_eq!(detect_db_kind("data.sqlite"), DbKind::Sqlite);
+        // file: URI format (SQLite shared-cache, etc.)
+        assert_eq!(detect_db_kind("file:mydb?mode=memory&cache=shared"), DbKind::Sqlite);
+        assert_eq!(detect_db_kind("file:/path/to/db.sqlite3"), DbKind::Sqlite);
+    }
+
+    #[test]
+    fn test_detect_default_postgres() {
+        // Unknown formats default to Postgres for backward compatibility
+        assert_eq!(detect_db_kind("host=localhost dbname=mydb"), DbKind::Postgres);
     }
 }

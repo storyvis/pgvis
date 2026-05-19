@@ -47,6 +47,7 @@
 
 pub mod backend;
 pub mod cache;
+pub mod cache_post_process;
 pub mod config;
 pub mod dialect;
 pub mod error;

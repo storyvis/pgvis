@@ -123,17 +123,15 @@ impl<'d> RenderContext<'d> {
 }
 
 // ---------------------------------------------------------------------------
-// Public entry point
+// Public entry points
 // ---------------------------------------------------------------------------
 
-/// Render an [`ActionPlan`] into parameterised SQL.
+/// Render an [`ActionPlan`] into parameterised SQL with CTE wrapping.
 ///
-/// This is the **only public function** of the SQL builder module.
+/// Used by the **Postgres backend** which executes the CTE-wrapped SQL and
+/// decodes the single result row containing `body`, `page_total`, etc.
+///
 /// Returns `(sql_string, parameter_values)` ready for [`Backend::execute`].
-///
-/// # Panics
-///
-/// Panics if called with `ActionPlan::Inspect` — those plans do not generate SQL.
 ///
 /// # Errors
 ///
@@ -162,6 +160,41 @@ pub fn render(plan: &ActionPlan, dialect: &Dialect) -> Result<(String, Vec<Value
         }
     }
 
+    Ok(ctx.finish())
+}
+
+/// Render an [`ActionPlan`] into parameterised SQL **without** CTE wrapping.
+///
+/// Used by the **SQLite backend** which cannot use Postgres-style `json_agg(row)`
+/// in SQL. Instead, the SQLite backend executes this raw query, iterates result
+/// rows in Rust, and assembles the JSON response body programmatically.
+///
+/// Returns `(sql_string, parameter_values)` where the SQL is a plain
+/// `SELECT`/`INSERT RETURNING`/`UPDATE RETURNING`/`DELETE RETURNING` statement.
+///
+/// # Errors
+///
+/// Returns [`Error::Internal`] for `Call` plans (SQLite has no routines) or
+/// `Inspect` plans (no SQL generation).
+pub fn render_inner(plan: &ActionPlan, dialect: &Dialect) -> Result<(String, Vec<Value>), Error> {
+    let mut ctx = RenderContext::new(dialect);
+
+    let inner_sql = match plan {
+        ActionPlan::Read(read_plan) => read::render_read(read_plan, &mut ctx)?,
+        ActionPlan::Mutate(mutate_plan) => mutate::render_mutate(mutate_plan, &mut ctx)?,
+        ActionPlan::Call(_) => {
+            return Err(Error::Internal(
+                "SQLite does not support RPC calls".to_string(),
+            ));
+        }
+        ActionPlan::Inspect(_) => {
+            return Err(Error::Internal(
+                "Inspect plans do not generate SQL".to_string(),
+            ));
+        }
+    };
+
+    ctx.push_sql(&inner_sql);
     Ok(ctx.finish())
 }
 

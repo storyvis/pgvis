@@ -225,6 +225,18 @@ pub struct Dialect {
     /// - Postgres: true (always)
     /// - SQLite: true (since 3.39, June 2022)
     pub supports_is_distinct: bool,
+
+    /// Whether `row_to_json(alias)` on a subquery alias is supported.
+    ///
+    /// Postgres can serialize an entire row by referencing the subquery alias:
+    /// `SELECT row_to_json(_sub) FROM (...) AS _sub`. SQLite (and some other
+    /// databases) cannot — they require explicit `json_object('k', v, ...)`.
+    ///
+    /// Used by the embed renderer to choose serialization strategy.
+    ///
+    /// - Postgres: true
+    /// - SQLite: false
+    pub supports_row_to_json: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +267,7 @@ pub static POSTGRES: Dialect = Dialect {
     supports_quantifiers: true,
     supports_set_timezone: true,
     supports_is_distinct: true,
+    supports_row_to_json: true,
 };
 
 /// The SQLite dialect — limited feature set.
@@ -288,6 +301,7 @@ pub static SQLITE: Dialect = Dialect {
     supports_quantifiers: false, // must fan-out or reject
     supports_set_timezone: false,
     supports_is_distinct: false, // SQLite 3.39+ — conservative default
+    supports_row_to_json: false,
 };
 
 #[cfg(test)]

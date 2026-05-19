@@ -324,15 +324,27 @@ async fn dispatch_request(
     }
 
     // 3. Render the plan to SQL + parameters
-    let (sql, params_vec) = match query::render(&plan, &state.dialect) {
-        Ok(rendered) => rendered,
-        Err(err) => return response::format_error(&err),
+    //    Postgres: uses CTE wrapper for single-row JSON response + GUC headers
+    //    SQLite: uses raw SQL — Rust-side JSON assembly in execute module
+    let (sql, params_vec) = if state.dialect.supports_set_local {
+        // Postgres path: CTE-wrapped SQL that returns body + page_total in one row
+        match query::render(&plan, &state.dialect) {
+            Ok(rendered) => rendered,
+            Err(err) => return response::format_error(&err),
+        }
+    } else {
+        // SQLite path: render without CTE wrapping — executor assembles JSON
+        match query::render_inner(&plan, &state.dialect) {
+            Ok(rendered) => rendered,
+            Err(err) => return response::format_error(&err),
+        }
     };
 
     tracing::debug!(sql = %sql, params = ?params_vec, "executing query");
 
     // 4. Build ExecContext from config + preferences
-    let exec_ctx = build_exec_context(&state.config, &preferences);
+    let is_mutation = matches!(&plan, ActionPlan::Mutate(_));
+    let exec_ctx = build_exec_context(&state.config, &preferences, is_mutation);
 
     // 5. Execute via backend
     let result = match state.backend.execute(&exec_ctx, &sql, &params_vec).await {
@@ -444,7 +456,7 @@ fn build_api_request(
 ///
 /// In a full implementation, this would also extract the JWT role and claims.
 /// For now, we use the anonymous role from config.
-fn build_exec_context(config: &Config, preferences: &Preferences) -> ExecContext {
+fn build_exec_context(config: &Config, preferences: &Preferences, is_mutation: bool) -> ExecContext {
     let tx_end = preferences.tx.and_then(|tx| match tx {
         PreferTx::Commit => Some(TxEnd::Commit),
         PreferTx::Rollback => Some(TxEnd::Rollback),
@@ -457,6 +469,7 @@ fn build_exec_context(config: &Config, preferences: &Preferences) -> ExecContext
         // Always enforce a statement timeout to prevent runaway queries
         statement_timeout: config.statement_timeout_ms,
         tx_end,
+        is_mutation,
     }
 }
 

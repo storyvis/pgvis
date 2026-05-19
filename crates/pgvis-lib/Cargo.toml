@@ -12,7 +12,8 @@ workspace = true
 
 [dependencies]
 pgvis-core = { path = "../pgvis-core" }
-pgvis-postgres = { path = "../pgvis-postgres" }
+pgvis-postgres = { path = "../pgvis-postgres", optional = true }
+pgvis-sqlite = { path = "../pgvis-sqlite", optional = true }
 pgvis-router = { path = "../pgvis-router" }
 pgvis-mcp = { path = "../pgvis-mcp", optional = true }
 axum.workspace = true
@@ -22,5 +23,7 @@ tracing.workspace = true
 thiserror.workspace = true
 
 [features]
-default = ["mcp"]
+default = ["postgres", "sqlite", "mcp"]
+postgres = ["dep:pgvis-postgres"]
+sqlite = ["dep:pgvis-sqlite"]
 mcp = ["dep:pgvis-mcp"]

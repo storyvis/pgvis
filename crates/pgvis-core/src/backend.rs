@@ -93,6 +93,7 @@ impl Default for IntrospectConfig {
 ///   then executes the main statement.
 /// - **SQLite:** `role` and `claims` are informational only (no RLS). `pre_request`
 ///   is a no-op. `statement_timeout` may use `sqlite3_progress_handler`.
+///   `is_mutation` routes the query to the writer connection.
 #[derive(Debug, Clone, Default)]
 pub struct ExecContext {
     /// Role to `SET LOCAL role` to within the transaction.
@@ -126,6 +127,15 @@ pub struct ExecContext {
     /// When `Some(TxEnd::Rollback)`, the transaction is rolled back after execution
     /// (useful for testing/dry-run). Only honoured if the server config permits it.
     pub tx_end: Option<TxEnd>,
+
+    /// Whether this is a write operation (INSERT/UPDATE/DELETE).
+    ///
+    /// Used by the SQLite backend to route queries to the writer connection
+    /// (serialized via mutex) vs the reader pool (concurrent). Set by the
+    /// adapter layer based on the HTTP method / plan type.
+    ///
+    /// On Postgres this field is informational only (all queries use pooled connections).
+    pub is_mutation: bool,
 }
 
 /// Transaction end behaviour, controlled by `Prefer: tx` header.

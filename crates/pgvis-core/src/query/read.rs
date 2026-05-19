@@ -56,7 +56,7 @@ pub fn render_read(plan: &ReadPlan, ctx: &mut RenderContext<'_>) -> Result<Strin
     let order_by = fragment::render_order_clause(&plan.order, Some(table_alias), ctx);
 
     // --- LIMIT / OFFSET ---
-    let limit_offset = fragment::render_limit_offset(plan.range.limit, plan.range.offset, ctx);
+    let limit_offset = fragment::render_limit_offset(plan.range.limit, plan.range.offset);
 
     // --- Assemble ---
     let mut sql = format!("SELECT {select_clause} FROM {from_clause}");
@@ -169,7 +169,7 @@ fn render_embed(
     }
 
     // LIMIT for child
-    if let Some(lo) = fragment::render_limit_offset(child_plan.range.limit, child_plan.range.offset, ctx) {
+    if let Some(lo) = fragment::render_limit_offset(child_plan.range.limit, child_plan.range.offset) {
         inner_sql.push(' ');
         inner_sql.push_str(&lo);
     }
@@ -177,29 +177,92 @@ fn render_embed(
     // Determine if this is a to-one (object) or to-many (array) embed
     let is_to_one = is_to_one_relationship(&embed.join);
 
-    // Wrap in json_agg (array) or row_to_json (object)
+    // Wrap in json aggregation — dialect-aware
     let output_alias = embed
         .alias
         .as_deref()
         .unwrap_or(&embed.name);
 
-    let json_agg_fn = ctx.dialect.json_array_agg;
-
-    let embed_expr = if is_to_one || embed.is_spread {
-        // To-one: return single JSON object (or NULL)
-        format!(
-            "(SELECT row_to_json({sub_alias}) FROM ({inner_sql}) AS {sub_alias} LIMIT 1) AS {}",
-            ctx.quote_ident(output_alias)
-        )
+    let embed_expr = if ctx.dialect.supports_row_to_json {
+        // Postgres path: use row_to_json / json_agg on subquery alias
+        let json_agg_fn = ctx.dialect.json_array_agg;
+        if is_to_one || embed.is_spread {
+            format!(
+                "(SELECT row_to_json({sub_alias}) FROM ({inner_sql}) AS {sub_alias} LIMIT 1) AS {}",
+                ctx.quote_ident(output_alias)
+            )
+        } else {
+            format!(
+                "COALESCE((SELECT {json_agg_fn}({sub_alias}) FROM ({inner_sql}) AS {sub_alias}), '[]') AS {}",
+                ctx.quote_ident(output_alias)
+            )
+        }
     } else {
-        // To-many: aggregate into JSON array
-        format!(
-            "COALESCE((SELECT {json_agg_fn}({sub_alias}) FROM ({inner_sql}) AS {sub_alias}), '[]') AS {}",
-            ctx.quote_ident(output_alias)
-        )
+        // SQLite path: enumerate columns into json_object(...)
+        // SQLite cannot serialize row references; must use explicit json_object()
+        let json_obj_expr = build_sqlite_json_object(&child_plan.select, ctx);
+        let json_agg_fn = ctx.dialect.json_array_agg;
+        if is_to_one || embed.is_spread {
+            format!(
+                "(SELECT {json_obj_expr} FROM ({inner_sql}) LIMIT 1) AS {}",
+                ctx.quote_ident(output_alias)
+            )
+        } else {
+            format!(
+                "COALESCE((SELECT {json_agg_fn}({json_obj_expr}) FROM ({inner_sql})), '[]') AS {}",
+                ctx.quote_ident(output_alias)
+            )
+        }
     };
 
     Ok(embed_expr)
+}
+
+/// Build a `json_object('col1', "col1", 'col2', "col2", ...)` expression
+/// from the embed's select list. Used for SQLite which cannot serialize row references.
+fn build_sqlite_json_object(
+    selects: &[crate::plan::types::ResolvedSelect],
+    ctx: &RenderContext<'_>,
+) -> String {
+    use crate::plan::types::ResolvedSelect;
+
+    let mut pairs = Vec::new();
+    for sel in selects {
+        match sel {
+            ResolvedSelect::Star => {
+                // Can't enumerate star without schema info at this point;
+                // fall back to json_object() with no args which just returns '{}'
+                // In practice, the plan layer should resolve star to columns.
+                // This is a safety fallback.
+                return "json_object()".to_string();
+            }
+            ResolvedSelect::Column(col) => {
+                let name = col.alias.as_deref().unwrap_or(&col.name);
+                pairs.push(format!("'{}', {}", name, ctx.quote_ident(&col.name)));
+            }
+            ResolvedSelect::Aggregate(agg) => {
+                let func = agg.function.sql_name();
+                let inner = match &agg.column {
+                    Some(col_name) => ctx.quote_ident(col_name),
+                    None => "*".to_string(),
+                };
+                let alias_name = agg
+                    .alias
+                    .as_deref()
+                    .unwrap_or_else(|| agg.column.as_deref().unwrap_or(func));
+                pairs.push(format!("'{}', {func}({inner})", alias_name));
+            }
+            ResolvedSelect::Embed(_) => {
+                // Embeds are appended separately by render_embed; not part of the row JSON
+            }
+        }
+    }
+
+    if pairs.is_empty() {
+        "json_object()".to_string()
+    } else {
+        format!("json_object({})", pairs.join(", "))
+    }
 }
 
 /// Render the JOIN condition between parent and child.
