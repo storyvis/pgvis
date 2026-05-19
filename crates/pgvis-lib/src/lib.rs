@@ -171,8 +171,12 @@ impl Builder {
     /// # Errors
     /// Returns an error if the database connection or introspection fails.
     pub async fn build_components(self) -> Result<Components, pgvis_core::error::Error> {
-        let backend = pgvis_postgres::PgBackend::new(&self.dsn)?;
         let config = Arc::new(self.resolve_config());
+        let backend = pgvis_postgres::PgBackend::new(
+            &self.dsn,
+            config.pool_size,
+            config.pool_timeout_ms,
+        )?;
 
         let introspect_config = IntrospectConfig {
             schemas: config.schemas.clone(),
@@ -223,11 +227,15 @@ impl Builder {
     /// Returns an error if the database connection or introspection fails.
     #[cfg(feature = "mcp")]
     pub async fn build_mcp_server(self) -> Result<pgvis_mcp::McpServer, pgvis_core::error::Error> {
-        let backend = pgvis_postgres::PgBackend::new(&self.dsn)?;
+        let config = Arc::new(self.resolve_config());
+        let backend = pgvis_postgres::PgBackend::new(
+            &self.dsn,
+            config.pool_size,
+            config.pool_timeout_ms,
+        )?;
         let cache = Arc::new(ArcSwap::new(Arc::new(
             backend.introspect(&IntrospectConfig::default()).await?,
         )));
-        let config = Arc::new(self.resolve_config());
         let dialect = Arc::new(backend.dialect().clone());
 
         Ok(pgvis_mcp::McpServer::new(cache, config, dialect))

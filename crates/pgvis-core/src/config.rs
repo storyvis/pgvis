@@ -267,7 +267,26 @@ pub struct Config {
     /// Default statement timeout in milliseconds (0 = no timeout).
     ///
     /// Applied to every query unless overridden per-function.
+    /// Defaults to 30000 (30 seconds) to prevent runaway queries.
+    #[serde(default = "default_statement_timeout_ms")]
     pub statement_timeout_ms: Option<u64>,
+
+    // --- Connection pool ---
+
+    /// Maximum number of database connections in the pool.
+    ///
+    /// Each concurrent request holds one connection for its transaction duration.
+    /// Defaults to 16.
+    #[serde(default = "default_pool_size")]
+    pub pool_size: u32,
+
+    /// Pool checkout timeout in milliseconds.
+    ///
+    /// If all connections are busy and a new request arrives, it will wait
+    /// up to this duration before returning a 503 Service Unavailable error.
+    /// Defaults to 5000 (5 seconds). Set to 0 for no timeout (not recommended).
+    #[serde(default = "default_pool_timeout_ms")]
+    pub pool_timeout_ms: u64,
 
     // --- Hooks ---
 
@@ -318,7 +337,9 @@ impl Default for Config {
             tx_allow_override: false,
             tx_rollback_all: false,
             max_rows: None,
-            statement_timeout_ms: None,
+            statement_timeout_ms: default_statement_timeout_ms(),
+            pool_size: default_pool_size(),
+            pool_timeout_ms: default_pool_timeout_ms(),
             pre_request: None,
             openapi_title: None,
             openapi_server_url: None,
@@ -397,4 +418,16 @@ fn default_default_schema() -> String {
 
 fn default_mcp_separator() -> char {
     '/'
+}
+
+fn default_statement_timeout_ms() -> Option<u64> {
+    Some(30_000) // 30 seconds
+}
+
+fn default_pool_size() -> u32 {
+    16
+}
+
+fn default_pool_timeout_ms() -> u64 {
+    5_000 // 5 seconds
 }

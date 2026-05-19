@@ -145,25 +145,15 @@ pub fn render(plan: &ActionPlan, dialect: &Dialect) -> Result<(String, Vec<Value
     match plan {
         ActionPlan::Read(read_plan) => {
             let inner_sql = read::render_read(read_plan, &mut ctx)?;
-            cte::wrap_cte(&inner_sql, read_plan.count.as_ref(), &read_plan.select, &mut ctx);
+            cte::wrap_cte(&inner_sql, read_plan.count.as_ref(), &mut ctx);
         }
         ActionPlan::Mutate(mutate_plan) => {
             let inner_sql = mutate::render_mutate(mutate_plan, &mut ctx)?;
-            cte::wrap_cte(
-                &inner_sql,
-                mutate_plan.count.as_ref(),
-                &mutate_plan.returning,
-                &mut ctx,
-            );
+            cte::wrap_cte(&inner_sql, mutate_plan.count.as_ref(), &mut ctx);
         }
         ActionPlan::Call(call_plan) => {
             let inner_sql = call::render_call(call_plan, &mut ctx)?;
-            cte::wrap_cte(
-                &inner_sql,
-                None,
-                &call_plan.returning,
-                &mut ctx,
-            );
+            cte::wrap_cte(&inner_sql, None, &mut ctx);
         }
         ActionPlan::Inspect(_) => {
             return Err(Error::Internal(

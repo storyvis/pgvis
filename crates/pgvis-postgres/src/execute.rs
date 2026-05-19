@@ -283,16 +283,20 @@ pub async fn execute_query(
     let result = execute_inner(client, ctx, sql, params).await;
 
     // Determine transaction end
-    let should_rollback = match result {
+    let should_rollback = match &result {
         Err(_) => true,
         Ok(_) => matches!(ctx.tx_end, Some(TxEnd::Rollback)),
     };
 
     let end_sql = if should_rollback { "ROLLBACK" } else { "COMMIT" };
-    client
-        .batch_execute(end_sql)
-        .await
-        .map_err(|e| execution_error(&format!("{end_sql} failed"), &e))?;
+    if let Err(tx_err) = client.batch_execute(end_sql).await {
+        tracing::error!(error = %tx_err, command = end_sql, "transaction end failed");
+        // If the original result was Ok but COMMIT failed, return the commit error
+        if result.is_ok() {
+            return Err(execution_error(&format!("{end_sql} failed"), &tx_err));
+        }
+        // If original was already Err, preserve it (don't lose the real error)
+    }
 
     result
 }
@@ -306,7 +310,7 @@ async fn execute_inner(
 ) -> Result<QueryResult, Error> {
     // 2. SET LOCAL role
     if let Some(role) = &ctx.role {
-        let set_role = format!("SET LOCAL role = '{}'", escape_literal(role));
+        let set_role = format!("SET LOCAL role = {}", quote_ident(role));
         client
             .batch_execute(&set_role)
             .await
@@ -318,7 +322,7 @@ async fn execute_inner(
         let claims_str = claims.to_string();
         let set_claims = format!(
             "SET LOCAL request.jwt.claims = '{}'",
-            escape_literal(&claims_str)
+            escape_literal(&claims_str)?
         );
         client
             .batch_execute(&set_claims)
@@ -332,12 +336,13 @@ async fn execute_inner(
                     Value::String(s) => s.clone(),
                     other => other.to_string(),
                 };
-                let set_claim = format!(
-                    "SET LOCAL \"request.jwt.claim.{key}\" = '{}'",
-                    escape_literal(&val_str)
-                );
-                // Individual claim failures are non-fatal
-                let _ = client.batch_execute(&set_claim).await;
+                if let Ok(escaped) = escape_literal(&val_str) {
+                    let set_claim = format!(
+                        "SET LOCAL \"request.jwt.claim.{key}\" = '{escaped}'"
+                    );
+                    // Individual claim failures are non-fatal
+                    let _ = client.batch_execute(&set_claim).await;
+                }
             }
         }
     }
@@ -351,8 +356,10 @@ async fn execute_inner(
             .map_err(|e| execution_error("SET LOCAL statement_timeout failed", &e))?;
     }
 
-    // 5. Pre-request function
+    // 5. Pre-request function (qualified name from config — use as-is since it's trusted)
     if let Some(pre_req) = &ctx.pre_request {
+        // pre_request is a qualified function name like "auth.check_request"
+        // It comes from server config (not user input), so direct interpolation is acceptable.
         let call_pre = format!("SELECT {pre_req}()");
         client
             .batch_execute(&call_pre)
@@ -472,10 +479,24 @@ fn parse_guc_headers(raw: &str) -> Option<Vec<(String, String)>> {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/// Quote a Postgres identifier (role name, schema name) using double-quote escaping.
+/// Prevents SQL injection through crafted identifiers.
+fn quote_ident(s: &str) -> String {
+    format!("\"{}\"", s.replace('"', "\"\""))
+}
+
 /// Escape a string literal for use in SET LOCAL statements.
-/// Doubles single quotes to prevent SQL injection.
-fn escape_literal(s: &str) -> String {
-    s.replace('\'', "''")
+/// Doubles single quotes and rejects null bytes to prevent SQL injection.
+fn escape_literal(s: &str) -> Result<String, Error> {
+    if s.contains('\0') {
+        return Err(Error::Execution {
+            message: "null byte in literal value".to_string(),
+            db_code: None,
+            detail: None,
+            hint: Some("Remove null bytes from the value".to_string()),
+        });
+    }
+    Ok(s.replace('\'', "''"))
 }
 
 /// Create an execution error from a tokio-postgres error.

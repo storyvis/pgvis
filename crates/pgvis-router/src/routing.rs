@@ -434,6 +434,7 @@ fn build_exec_context(config: &Config, preferences: &Preferences) -> ExecContext
         role: config.anon_role.clone(),
         claims: None, // TODO: extract from JWT when auth is implemented
         pre_request: config.pre_request.clone(),
+        // Always enforce a statement timeout to prevent runaway queries
         statement_timeout: config.statement_timeout_ms,
         tx_end,
     }
@@ -447,6 +448,10 @@ fn build_exec_context(config: &Config, preferences: &Preferences) -> ExecContext
 ///
 /// Any parameter whose key is not a reserved keyword (`select`, `order`, `limit`,
 /// `offset`, `on_conflict`, `columns`) is treated as a column filter.
+///
+/// Filters are sorted by column name for deterministic SQL output,
+/// which improves Postgres prepared-statement cache hit rates and
+/// makes debugging/logging reproducible.
 fn parse_filters_from_params(
     params: &HashMap<String, String>,
 ) -> Vec<pgvis_core::query_params::Filter> {
@@ -462,6 +467,9 @@ fn parse_filters_from_params(
             filters.push(filter);
         }
     }
+
+    // Sort by column name for deterministic SQL output
+    filters.sort_by(|a, b| a.field.cmp(&b.field));
 
     filters
 }

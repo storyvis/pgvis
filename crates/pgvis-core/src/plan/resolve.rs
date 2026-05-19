@@ -601,29 +601,48 @@ fn suggest_column(table: &Table, name: &str) -> Vec<String> {
     find_similar(name, table.columns.keys().map(|k| k.as_str()), 3)
 }
 
-/// Find strings similar to `target` using simple substring matching.
-/// Returns up to `max` suggestions sorted by relevance.
+/// Find strings similar to `target` using Levenshtein edit distance.
+/// Returns up to `max` suggestions sorted by distance (closest first).
 fn find_similar<'a>(
     target: &str,
     candidates: impl Iterator<Item = &'a str>,
     max: usize,
 ) -> Vec<String> {
     let target_lower = target.to_lowercase();
+    let max_dist = 3.max(target.len() / 2);
     let mut scored: Vec<(usize, String)> = candidates
         .filter_map(|c| {
-            let c_lower = c.to_lowercase();
-            // Simple similarity: count of common characters
-            let common = target_lower
-                .chars()
-                .filter(|ch| c_lower.contains(*ch))
-                .count();
-            if common > target_lower.len() / 2 {
-                Some((common, c.to_string()))
+            let dist = levenshtein(&target_lower, &c.to_lowercase());
+            if dist <= max_dist {
+                Some((dist, c.to_string()))
             } else {
                 None
             }
         })
         .collect();
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|(dist, _)| *dist);
     scored.into_iter().take(max).map(|(_, s)| s).collect()
+}
+
+/// Compute the Levenshtein edit distance between two strings.
+fn levenshtein(a: &str, b: &str) -> usize {
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0; b.len() + 1];
+    for i in 1..=a.len() {
+        curr[0] = i;
+        for j in 1..=b.len() {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
 }

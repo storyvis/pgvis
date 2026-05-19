@@ -44,7 +44,7 @@ pub struct PgBackend {
 }
 
 impl PgBackend {
-    /// Create a new Postgres backend from a DSN.
+    /// Create a new Postgres backend from a DSN with pool configuration.
     ///
     /// Initialises the connection pool but does NOT connect immediately —
     /// connections are created lazily on first use.
@@ -52,6 +52,8 @@ impl PgBackend {
     /// # Arguments
     ///
     /// * `dsn` — A PostgreSQL connection string (e.g. `postgres://user:pass@host/db`)
+    /// * `pool_size` — Maximum number of connections in the pool
+    /// * `pool_timeout_ms` — Checkout timeout in milliseconds (0 = no timeout)
     ///
     /// # Errors
     ///
@@ -60,15 +62,24 @@ impl PgBackend {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let backend = PgBackend::new("postgres://localhost/mydb")?;
+    /// let backend = PgBackend::new("postgres://localhost/mydb", 16, 5000)?;
     /// ```
-    pub fn new(dsn: &str) -> Result<Self, Error> {
+    pub fn new(dsn: &str, pool_size: u32, pool_timeout_ms: u64) -> Result<Self, Error> {
         let mut cfg = PoolConfig::new();
         cfg.url = Some(dsn.to_string());
-        // Default pool size of num_cpus can be too small for concurrent workloads.
-        // Set a reasonable minimum of 16 connections.
+
+        let timeouts = if pool_timeout_ms > 0 {
+            deadpool_postgres::Timeouts {
+                wait: Some(std::time::Duration::from_millis(pool_timeout_ms)),
+                ..Default::default()
+            }
+        } else {
+            Default::default()
+        };
+
         cfg.pool = Some(deadpool_postgres::PoolConfig {
-            max_size: 16,
+            max_size: pool_size as usize,
+            timeouts,
             ..Default::default()
         });
 

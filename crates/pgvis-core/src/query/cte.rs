@@ -6,7 +6,7 @@
 //!
 //! This is the PostgREST pattern — a single result row regardless of query type.
 
-use crate::plan::types::{CountStrategy, ResolvedSelect};
+use crate::plan::types::CountStrategy;
 
 use super::RenderContext;
 
@@ -29,7 +29,6 @@ use super::RenderContext;
 pub fn wrap_cte(
     inner_sql: &str,
     count: Option<&CountStrategy>,
-    _select: &[ResolvedSelect],
     ctx: &mut RenderContext<'_>,
 ) {
     let json_agg = ctx.dialect.json_array_agg;
@@ -68,14 +67,13 @@ pub fn wrap_cte(
 mod tests {
     use super::*;
     use crate::dialect::{POSTGRES, SQLITE};
-    use crate::plan::types::ResolvedSelect;
 
     #[test]
     fn test_cte_postgres() {
         let mut ctx = RenderContext::new(&POSTGRES);
         let inner = "SELECT \"users\".\"id\", \"users\".\"name\" FROM \"public\".\"users\" AS \"users\"";
 
-        wrap_cte(inner, None, &[ResolvedSelect::Star], &mut ctx);
+        wrap_cte(inner, None, &mut ctx);
 
         let sql = ctx.sql();
         assert!(sql.contains("WITH pgrst_source AS ("));
@@ -91,7 +89,7 @@ mod tests {
         let mut ctx = RenderContext::new(&SQLITE);
         let inner = "SELECT \"users\".\"id\" FROM \"users\" AS \"users\"";
 
-        wrap_cte(inner, None, &[ResolvedSelect::Star], &mut ctx);
+        wrap_cte(inner, None, &mut ctx);
 
         let sql = ctx.sql();
         assert!(sql.contains("WITH pgrst_source AS ("));
@@ -107,12 +105,7 @@ mod tests {
         let mut ctx = RenderContext::new(&POSTGRES);
         let inner = "SELECT * FROM \"users\"";
 
-        wrap_cte(
-            inner,
-            Some(&CountStrategy::Exact),
-            &[ResolvedSelect::Star],
-            &mut ctx,
-        );
+        wrap_cte(inner, Some(&CountStrategy::Exact), &mut ctx);
 
         let sql = ctx.sql();
         assert!(sql.contains("total_count"));

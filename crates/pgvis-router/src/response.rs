@@ -138,7 +138,7 @@ fn determine_status(result: &QueryResult, method: &RequestMethod) -> StatusCode 
             if result.was_insert == Some(true) {
                 StatusCode::CREATED
             } else {
-                StatusCode::CREATED
+                StatusCode::OK
             }
         }
         RequestMethod::Put => StatusCode::OK,
