@@ -96,6 +96,7 @@ pub use pgvis_mcp;
 /// the internal pieces (e.g. for OpenAPI generation, schema inspection, MCP stdio).
 ///
 /// The `router` field is ready to serve with `axum::serve`.
+#[non_exhaustive]
 pub struct Components {
     /// The database backend (implements query execution).
     pub backend: Arc<dyn Backend>,
@@ -233,8 +234,12 @@ impl Builder {
             config.pool_size,
             config.pool_timeout_ms,
         )?;
+        let introspect_config = IntrospectConfig {
+            schemas: config.schemas.clone(),
+            extra_search_path: config.extra_search_path.clone(),
+        };
         let cache = Arc::new(ArcSwap::new(Arc::new(
-            backend.introspect(&IntrospectConfig::default()).await?,
+            backend.introspect(&introspect_config).await?,
         )));
         let dialect = Arc::new(backend.dialect().clone());
 

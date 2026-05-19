@@ -3,6 +3,7 @@
 use pgvis_core::cache::{Cardinality, QualifiedIdentifier, Relationship};
 use pgvis_core::error::Error;
 use serde::Deserialize;
+use tokio_postgres::types::Type;
 use tokio_postgres::Client;
 
 /// SQL query for relationships introspection (loaded at compile time).
@@ -15,13 +16,20 @@ struct ColumnPair {
     target: String,
 }
 
-/// Query all foreign key relationships across all schemas.
+/// Query all foreign key relationships where at least one side is in the given schemas.
 ///
 /// Returns M2O and O2O relationships. Inverse (O2M) and M2M relationships
 /// are added during post-processing.
-pub async fn query_relationships(client: &Client) -> Result<Vec<Relationship>, Error> {
+pub async fn query_relationships(
+    client: &Client,
+    schemas: &[String],
+) -> Result<Vec<Relationship>, Error> {
+    let stmt = client
+        .prepare_typed(RELATIONSHIPS_SQL, &[Type::TEXT_ARRAY])
+        .await
+        .map_err(|e| Error::Introspection(format!("relationships query prepare failed: {e}")))?;
     let rows = client
-        .query(RELATIONSHIPS_SQL, &[])
+        .query(&stmt, &[&schemas])
         .await
         .map_err(|e| Error::Introspection(format!("relationships query failed: {e}")))?;
 

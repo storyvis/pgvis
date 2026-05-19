@@ -4,7 +4,7 @@
 //! `SchemaCache` and infer additional relationships that can't be discovered
 //! from a single query.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use pgvis_core::cache::{Cardinality, QualifiedIdentifier, Relationship, SchemaCache};
 
@@ -14,11 +14,14 @@ use pgvis_core::cache::{Cardinality, QualifiedIdentifier, Relationship, SchemaCa
 /// - For each O2O (A → B), adds O2O (B → A) with swapped columns
 ///
 /// This matches PostgREST's `addInverseRels` behaviour.
+///
+/// Uses index-based iteration to avoid cloning the entire relationships vector.
 pub fn add_inverse_relationships(cache: &mut SchemaCache) {
-    let existing: Vec<Relationship> = cache.relationships.clone();
     let mut inverse_rels = Vec::new();
+    let len = cache.relationships.len();
 
-    for rel in &existing {
+    for i in 0..len {
+        let rel = &cache.relationships[i];
         match &rel.cardinality {
             Cardinality::M2O => {
                 // M2O(A→B) becomes O2M(B→A) with swapped columns
@@ -62,26 +65,23 @@ pub fn add_inverse_relationships(cache: &mut SchemaCache) {
 /// target tables, via the junction table.
 ///
 /// This matches PostgREST's `addM2MRels` behaviour.
+///
+/// Uses index-based access to avoid cloning the entire relationships vector.
 pub fn infer_m2m_relationships(cache: &mut SchemaCache) {
-    let existing: Vec<Relationship> = cache.relationships.clone();
-    let mut m2m_rels = Vec::new();
+    // Index M2O rels by their source table using indices (no clone needed)
+    let mut m2o_by_source: HashMap<&QualifiedIdentifier, Vec<usize>> = HashMap::new();
 
-    // Index M2O rels by their source table (potential junction tables)
-    let mut m2o_by_source: std::collections::HashMap<&QualifiedIdentifier, Vec<&Relationship>> =
-        std::collections::HashMap::new();
-
-    for rel in &existing {
+    for (i, rel) in cache.relationships.iter().enumerate() {
         if matches!(rel.cardinality, Cardinality::M2O) {
-            m2o_by_source
-                .entry(&rel.source_table)
-                .or_default()
-                .push(rel);
+            m2o_by_source.entry(&rel.source_table).or_default().push(i);
         }
     }
 
+    let mut m2m_rels = Vec::new();
+
     // For each potential junction table with 2+ M2O rels
-    for (junction_ident, rels) in &m2o_by_source {
-        if rels.len() < 2 {
+    for (junction_ident, indices) in &m2o_by_source {
+        if indices.len() < 2 {
             continue;
         }
 
@@ -96,8 +96,11 @@ pub fn infer_m2m_relationships(cache: &mut SchemaCache) {
         }
 
         // Try all pairs of M2O rels on this junction
-        for (i, rel1) in rels.iter().enumerate() {
-            for rel2 in rels.iter().skip(i + 1) {
+        for (ii, &idx1) in indices.iter().enumerate() {
+            for &idx2 in indices.iter().skip(ii + 1) {
+                let rel1 = &cache.relationships[idx1];
+                let rel2 = &cache.relationships[idx2];
+
                 // Skip if both point to the same constraint
                 if rel1.constraint_name == rel2.constraint_name {
                     continue;
@@ -145,22 +148,32 @@ pub fn infer_m2m_relationships(cache: &mut SchemaCache) {
 ///
 /// Sets `column.is_fk = true` for all columns that appear as source columns
 /// in any relationship.
+///
+/// Uses disjoint field borrows: reads `cache.relationships` (immutable) while
+/// mutating `cache.tables` (mutable). This avoids cloning per-column for lookup.
 pub fn mark_fk_columns(cache: &mut SchemaCache) {
-    // Collect all (table, column) pairs that are FK sources
-    let fk_cols: HashSet<(QualifiedIdentifier, String)> = cache
-        .relationships
+    // Split the borrow: immutable access to relationships, mutable to tables.
+    let SchemaCache {
+        ref relationships,
+        ref mut tables,
+        ..
+    } = *cache;
+
+    // Build a HashSet of (table_ident, column_name) that are FK sources.
+    // Uses references to avoid allocation in the hot lookup path.
+    let fk_cols: HashSet<(&QualifiedIdentifier, &str)> = relationships
         .iter()
         .flat_map(|rel| {
             rel.source_columns
                 .iter()
-                .map(|col| (rel.source_table.clone(), col.clone()))
+                .map(move |col| (&rel.source_table, col.as_str()))
         })
         .collect();
 
-    // Update the columns
-    for (ident, table) in &mut cache.tables {
-        for (col_name, col) in &mut table.columns {
-            if fk_cols.contains(&(ident.clone(), col_name.clone())) {
+    // Update the columns using reference-based lookup (no clone per column)
+    for (ident, table) in tables.iter_mut() {
+        for (col_name, col) in table.columns.iter_mut() {
+            if fk_cols.contains(&(ident, col_name.as_str())) {
                 col.is_fk = true;
             }
         }

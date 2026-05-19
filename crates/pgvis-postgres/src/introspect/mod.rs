@@ -65,7 +65,7 @@ async fn run_introspection(
     info!(schemas = ?cfg.schemas, "introspecting database schema");
 
     let tables = tables::query_tables(client, schemas).await?;
-    let rels = relationships::query_relationships(client).await?;
+    let rels = relationships::query_relationships(client, schemas).await?;
     let routines = routines::query_routines(client, schemas).await?;
     let representations = representations::query_representations(client).await?;
 

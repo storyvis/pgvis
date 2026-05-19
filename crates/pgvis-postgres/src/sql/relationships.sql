@@ -1,9 +1,11 @@
 -- Foreign key relationships introspection query.
 -- Ported from PostgREST SchemaCache.hs `allM2OandO2ORels`.
 --
--- Parameters: none
+-- Parameters:
+--   $1 = schemas text[] (e.g. ARRAY['public', 'api'])
 --
--- Returns one row per foreign key constraint with:
+-- Returns one row per foreign key constraint where at least one side
+-- is in the specified schemas:
 --   table_schema, table_name, foreign_table_schema, foreign_table_name,
 --   is_self, constraint_name, columns (as JSON array of {source, target} pairs),
 --   is_one_to_one
@@ -47,4 +49,5 @@ JOIN pg_class other ON other.oid = traint.confrelid
 JOIN pg_namespace ns2 ON ns2.oid = other.relnamespace
 WHERE traint.contype = 'f'
 AND traint.conparentid = 0
+AND (ns1.oid = ANY($1::regnamespace[]) OR ns2.oid = ANY($1::regnamespace[]))
 ORDER BY traint.conrelid, traint.conname
