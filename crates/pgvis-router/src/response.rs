@@ -31,6 +31,7 @@ pub fn format_response(
     method: &RequestMethod,
     preferences: &Preferences,
     is_singular: bool,
+    request_offset: Option<u64>,
 ) -> Response {
     let mut headers = HeaderMap::new();
 
@@ -38,7 +39,7 @@ pub fn format_response(
     let mut status = determine_status(result, method);
 
     // Content-Range header
-    let content_range = build_content_range(result);
+    let content_range = build_content_range(result, request_offset);
     if let Ok(val) = HeaderValue::from_str(&content_range) {
         headers.insert("content-range", val);
     }
@@ -151,7 +152,7 @@ fn determine_status(result: &QueryResult, method: &RequestMethod) -> StatusCode 
 /// Build the Content-Range header value.
 ///
 /// Format: `{offset}-{offset+page-1}/{total}` or `*/{total}` or `*/*`
-fn build_content_range(result: &QueryResult) -> String {
+fn build_content_range(result: &QueryResult, request_offset: Option<u64>) -> String {
     let page = result.page_total.unwrap_or(0);
     let total = match result.total_count {
         Some(t) => t.to_string(),
@@ -161,8 +162,9 @@ fn build_content_range(result: &QueryResult) -> String {
     if page == 0 {
         format!("*/{total}")
     } else {
-        // We don't have offset info in QueryResult, so use 0-based
-        format!("0-{}/{total}", page - 1)
+        let offset = request_offset.unwrap_or(0);
+        let range_end = offset + (page as u64) - 1;
+        format!("{offset}-{range_end}/{total}")
     }
 }
 

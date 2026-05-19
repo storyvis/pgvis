@@ -26,6 +26,7 @@ use pgvis_core::preferences::{PreferTx, Preferences};
 use pgvis_core::query;
 use pgvis_core::query_params::{self, OrderItem};
 use pgvis_core::select_ast::SelectItem;
+use pgvis_core::config::OpenApiMode;
 use pgvis_core::{Config, Dialect, SchemaCache};
 
 use crate::openapi;
@@ -99,6 +100,7 @@ pub fn build_app(
                 .route("/{schema}/{target}", get(handle_table_with_schema)
                     .head(handle_table_with_schema)
                     .post(handle_table_with_schema)
+                    .put(handle_table_with_schema)
                     .patch(handle_table_with_schema)
                     .delete(handle_table_with_schema))
                 .route("/", get(handle_root));
@@ -112,6 +114,7 @@ pub fn build_app(
                 .route(&table_path, get(handle_table_with_schema)
                     .head(handle_table_with_schema)
                     .post(handle_table_with_schema)
+                    .put(handle_table_with_schema)
                     .patch(handle_table_with_schema)
                     .delete(handle_table_with_schema))
                 .route(&root_path, get(handle_root));
@@ -124,6 +127,7 @@ pub fn build_app(
                 .route("/{target}", get(handle_table_no_schema)
                     .head(handle_table_no_schema)
                     .post(handle_table_no_schema)
+                    .put(handle_table_no_schema)
                     .patch(handle_table_no_schema)
                     .delete(handle_table_no_schema))
                 .route("/", get(handle_root));
@@ -137,6 +141,7 @@ pub fn build_app(
                 .route(&table_path, get(handle_table_no_schema)
                     .head(handle_table_no_schema)
                     .post(handle_table_no_schema)
+                    .put(handle_table_no_schema)
                     .patch(handle_table_no_schema)
                     .delete(handle_table_no_schema))
                 .route(&root_path, get(handle_root));
@@ -235,6 +240,19 @@ async fn handle_root(
         .unwrap_or("");
 
     if accept.contains("application/openapi+json") || accept.contains("application/vnd.pgrst.object") {
+        // Check if OpenAPI is disabled
+        if state.config.openapi_mode == OpenApiMode::Disabled {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "code": "PGRST404",
+                    "message": "OpenAPI spec is disabled",
+                    "details": null,
+                    "hint": "Set openapi_mode to IgnorePrivileges or FollowPrivileges to enable.",
+                })),
+            ).into_response();
+        }
+
         // Generate OpenAPI spec
         let cache = state.cache.load();
         let spec = openapi::generate_spec(&cache, &state.config);
@@ -329,7 +347,9 @@ async fn dispatch_request(
         .map(|s| s.contains("application/vnd.pgrst.object"))
         .unwrap_or(false);
 
-    response::format_response(&result, &method, &preferences, is_singular)
+    let request_offset = params.get("offset").and_then(|s| s.parse::<u64>().ok());
+
+    response::format_response(&result, &method, &preferences, is_singular, request_offset)
 }
 
 // ---------------------------------------------------------------------------
