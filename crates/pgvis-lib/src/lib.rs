@@ -257,7 +257,7 @@ impl Builder {
         // Optionally merge MCP Streamable HTTP service
         #[cfg(feature = "mcp")]
         if self.mcp_http {
-            let mcp_server = pgvis_mcp::McpServer::new(cache.clone(), config.clone(), dialect.clone());
+            let mcp_server = pgvis_mcp::McpServer::new(cache.clone(), config.clone(), dialect.clone(), backend.clone());
             let mcp_service = pgvis_mcp::streamable_http_service(mcp_server);
             app = app.route_service("/mcp", mcp_service);
         }
@@ -301,7 +301,7 @@ impl Builder {
         )));
         let dialect = Arc::new(backend.dialect().clone());
 
-        Ok(pgvis_mcp::McpServer::new(cache, config, dialect))
+        Ok(pgvis_mcp::McpServer::new(cache, config, dialect, backend))
     }
 
     /// Create the appropriate backend based on DSN detection.

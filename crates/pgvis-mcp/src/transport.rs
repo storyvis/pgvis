@@ -8,14 +8,14 @@
 //! ```rust,no_run
 //! # use std::sync::Arc;
 //! # use arc_swap::ArcSwap;
-//! # use pgvis_core::{Config, SchemaCache, dialect::POSTGRES};
+//! # use pgvis_core::{Config, SchemaCache, Backend, dialect::POSTGRES};
 //! use pgvis_mcp::{McpServer, transport::serve_stdio};
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn example(backend: Arc<dyn Backend>) -> Result<(), Box<dyn std::error::Error>> {
 //! # let cache = Arc::new(ArcSwap::new(Arc::new(SchemaCache::default())));
 //! # let config = Arc::new(Config::default());
 //! # let dialect = Arc::new(POSTGRES.clone());
-//! let server = McpServer::new(cache, config, dialect);
+//! let server = McpServer::new(cache, config, dialect, backend);
 //! serve_stdio(server).await?;
 //! # Ok(())
 //! # }
@@ -26,14 +26,14 @@
 //! ```rust,no_run
 //! # use std::sync::Arc;
 //! # use arc_swap::ArcSwap;
-//! # use pgvis_core::{Config, SchemaCache, dialect::POSTGRES};
+//! # use pgvis_core::{Config, SchemaCache, Backend, dialect::POSTGRES};
 //! use pgvis_mcp::{McpServer, transport::streamable_http_service};
 //!
-//! # async fn example() {
+//! # fn example(backend: Arc<dyn Backend>) {
 //! # let cache = Arc::new(ArcSwap::new(Arc::new(SchemaCache::default())));
 //! # let config = Arc::new(Config::default());
 //! # let dialect = Arc::new(POSTGRES.clone());
-//! let server = McpServer::new(cache, config, dialect);
+//! let server = McpServer::new(cache, config, dialect, backend);
 //! let mcp_service = streamable_http_service(server);
 //! // Mount `mcp_service` at e.g. `/mcp` alongside your REST routes
 //! # }
@@ -79,15 +79,17 @@ pub async fn serve_stdio(server: McpServer) -> Result<(), Box<dyn std::error::Er
 /// use axum::Router;
 /// # use std::sync::Arc;
 /// # use arc_swap::ArcSwap;
-/// # use pgvis_core::{Config, SchemaCache, dialect::POSTGRES};
+/// # use pgvis_core::{Config, SchemaCache, Backend, dialect::POSTGRES};
 /// # use pgvis_mcp::{McpServer, transport::streamable_http_service};
 ///
+/// # fn example(backend: Arc<dyn Backend>) {
 /// # let cache = Arc::new(ArcSwap::new(Arc::new(SchemaCache::default())));
 /// # let config = Arc::new(Config::default());
 /// # let dialect = Arc::new(POSTGRES.clone());
-/// let server = McpServer::new(cache, config, dialect);
+/// let server = McpServer::new(cache, config, dialect, backend);
 /// let mcp_svc = streamable_http_service(server);
 /// // Use with hyper/axum at a specific path
+/// # }
 /// ```
 pub fn streamable_http_service(
     server: McpServer,

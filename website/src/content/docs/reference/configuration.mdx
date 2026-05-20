@@ -1,0 +1,66 @@
+---
+title: Configuration
+description: Full configuration reference for pgvis.
+---
+
+# Configuration Reference
+
+pgvis reads configuration from environment variables (prefixed with `PGVIS_`) and optionally from a TOML config file.
+
+## Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `PGVIS_DSN` | Database connection string | *required* |
+| `PGVIS_BIND` | Server bind address | `0.0.0.0:3000` |
+| `PGVIS_SCHEMAS` | Schemas to expose (comma-separated) | `public` |
+| `PGVIS_CONFIG` | Path to TOML config file | none |
+| `PGVIS_JWT_SECRET` | JWT verification secret | none |
+| `PGVIS_JWT_ALGO` | JWT algorithm (`HS256`, `RS256`, etc.) | `HS256` |
+| `PGVIS_ANON_ROLE` | Database role for unauthenticated requests | none |
+| `PGVIS_MAX_ROWS` | Maximum rows returned per request | unlimited |
+| `PGVIS_STATEMENT_TIMEOUT` | SQL statement timeout | none |
+| `RUST_LOG` | Log level filter | `info` |
+
+## CLI Flags
+
+```text
+pgvis --dsn <DSN> [--config <FILE>] <COMMAND>
+
+  serve     Start the HTTP server (REST + optional MCP)
+              --bind <ADDR>     default 0.0.0.0:3000
+              --schema <NAME>   repeatable / comma-separated
+              --mcp-http        also serve MCP at /mcp
+  mcp       Run an MCP server over stdio
+  openapi   Print the OpenAPI 3.0 document and exit
+  inspect   Dump the introspected schema cache as JSON
+```
+
+## Routing Configuration
+
+| Field | Purpose | Default |
+|-------|---------|---------|
+| `routing.prefix` | URL prefix for all routes | `"api"` |
+| `routing.schema_in_path` | Include schema in URL path | `true` |
+
+With `schema_in_path = true` (default):
+```
+/api/public/users
+/api/analytics/events
+```
+
+With `schema_in_path = false` (PostgREST-compatible flat mode):
+```
+/users
+/events
+```
+
+## Security
+
+| Field | Purpose |
+|-------|---------|
+| `jwt_secret` | Symmetric or asymmetric key for JWT verification |
+| `jwt_algo` | Algorithm (`HS256`, `HS384`, `HS512`, `RS256`, `EdDSA`) |
+| `anon_role` | Role used when no valid JWT is present |
+
+When a valid JWT is provided, pgvis switches to the role specified in the token's claims before executing queries. This integrates with Postgres Row-Level Security (RLS).

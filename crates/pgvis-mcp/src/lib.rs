@@ -21,15 +21,15 @@
 //! ```rust,no_run
 //! use std::sync::Arc;
 //! use arc_swap::ArcSwap;
-//! use pgvis_core::{Config, SchemaCache, dialect::POSTGRES};
+//! use pgvis_core::{Config, SchemaCache, Backend, dialect::POSTGRES};
 //! use pgvis_mcp::{McpServer, transport::serve_stdio};
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn example(backend: Arc<dyn Backend>) -> Result<(), Box<dyn std::error::Error>> {
 //! let cache = Arc::new(ArcSwap::new(Arc::new(SchemaCache::default())));
 //! let config = Arc::new(Config::default());
 //! let dialect = Arc::new(POSTGRES.clone());
 //!
-//! let server = McpServer::new(cache, config, dialect);
+//! let server = McpServer::new(cache, config, dialect, backend);
 //! serve_stdio(server).await?;
 //! # Ok(())
 //! # }
@@ -40,15 +40,15 @@
 //! ```rust,no_run
 //! use std::sync::Arc;
 //! use arc_swap::ArcSwap;
-//! use pgvis_core::{Config, SchemaCache, dialect::POSTGRES};
+//! use pgvis_core::{Config, SchemaCache, Backend, dialect::POSTGRES};
 //! use pgvis_mcp::{McpServer, transport::streamable_http_service};
 //!
-//! # fn example() {
+//! # fn example(backend: Arc<dyn Backend>) {
 //! let cache = Arc::new(ArcSwap::new(Arc::new(SchemaCache::default())));
 //! let config = Arc::new(Config::default());
 //! let dialect = Arc::new(POSTGRES.clone());
 //!
-//! let server = McpServer::new(cache, config, dialect);
+//! let server = McpServer::new(cache, config, dialect, backend);
 //! let mcp_service = streamable_http_service(server);
 //! // Mount at /mcp alongside REST routes
 //! # }

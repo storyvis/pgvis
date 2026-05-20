@@ -9,15 +9,18 @@
 //! ```rust,no_run
 //! use std::sync::Arc;
 //! use arc_swap::ArcSwap;
-//! use pgvis_core::{Config, SchemaCache, dialect::POSTGRES};
+//! use pgvis_core::{Config, SchemaCache, Backend, dialect::POSTGRES};
 //! use pgvis_mcp::McpServer;
 //!
+//! // Assumes you have an Arc<dyn Backend> from pgvis-postgres or pgvis-sqlite
+//! # fn example(backend: Arc<dyn Backend>) {
 //! let cache = Arc::new(ArcSwap::new(Arc::new(SchemaCache::default())));
 //! let config = Arc::new(Config::default());
 //! let dialect = Arc::new(POSTGRES.clone());
 //!
-//! let server = McpServer::new(cache, config, dialect);
+//! let server = McpServer::new(cache, config, dialect, backend);
 //! // Pass `server` to a transport (stdio, streamable HTTP, etc.)
+//! # }
 //! ```
 
 use std::sync::Arc;
@@ -31,6 +34,7 @@ use rmcp::model::{
 use rmcp::service::{RequestContext, RoleServer};
 use rmcp::ServerHandler;
 
+use pgvis_core::backend::Backend;
 use pgvis_core::{Config, Dialect, SchemaCache};
 
 use crate::tools::{build_mcp_resources, build_mcp_tools, handle_tool_call};
@@ -56,6 +60,8 @@ pub struct McpServer {
     pub config: Arc<Config>,
     /// SQL dialect (Postgres capability flags).
     pub dialect: Arc<Dialect>,
+    /// The database backend for query execution.
+    pub backend: Arc<dyn Backend>,
 }
 
 impl McpServer {
@@ -67,11 +73,13 @@ impl McpServer {
         cache: Arc<ArcSwap<SchemaCache>>,
         config: Arc<Config>,
         dialect: Arc<Dialect>,
+        backend: Arc<dyn Backend>,
     ) -> Self {
         Self {
             cache,
             config,
             dialect,
+            backend,
         }
     }
 }
@@ -150,7 +158,14 @@ impl ServerHandler for McpServer {
                 arguments,
             };
 
-            let result = handle_tool_call(&call, &cache, &self.dialect, &self.config);
+            let result = handle_tool_call(
+                &call,
+                &cache,
+                &self.dialect,
+                &self.config,
+                &*self.backend,
+            )
+            .await;
 
             // Convert our McpToolResult to rmcp's CallToolResult
             let content: Vec<Content> = result

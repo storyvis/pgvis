@@ -1,0 +1,83 @@
+---
+title: Embedding in Rust
+description: Use pgvis as a library in your Rust application.
+---
+
+# Embedding in Rust
+
+pgvis is not just a standalone server — it's a library you can embed in any Rust application.
+
+## Add the Dependency
+
+```toml
+[dependencies]
+pgvis-lib = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+## Build a REST + MCP Router
+
+```rust
+use pgvis_lib::Builder;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Build an axum Router with REST + MCP
+    let router = Builder::new("postgres://localhost/mydb")
+        .schemas(vec!["public"])
+        .with_mcp_http()
+        .build()
+        .await?;
+
+    // Serve with axum
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    axum::serve(listener, router).await?;
+    Ok(())
+}
+```
+
+## Build an MCP-only Server (stdio)
+
+```rust
+use pgvis_lib::Builder;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let mcp = Builder::new("postgres://localhost/mydb")
+        .schemas(vec!["public"])
+        .build_mcp_server()
+        .await?;
+
+    pgvis_lib::pgvis_mcp::serve_stdio(mcp).await?;
+    Ok(())
+}
+```
+
+## Configuration
+
+```rust
+use pgvis_lib::Builder;
+use pgvis_core::config::Config;
+
+let config = Config {
+    schemas: vec!["public".into(), "api".into()],
+    max_rows: Some(1000),
+    ..Default::default()
+};
+
+let router = Builder::new("postgres://localhost/mydb")
+    .config(config)
+    .build()
+    .await?;
+```
+
+## Architecture
+
+The embed API (`pgvis-lib`) is the same code path the CLI uses. There is no "server-only" logic — the `Builder` assembles:
+
+1. A database backend (connection pool + introspection)
+2. A schema cache (tables, relationships, routines)
+3. Configuration
+4. An axum `Router` or MCP `Server`
+
+All wired together with the same I/O-free core engine.

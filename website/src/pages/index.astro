@@ -1,0 +1,303 @@
+---
+import Layout from "../layouts/Landing.astro";
+
+const features = [
+  {
+    title: "MCP for AI agents",
+    body: "Every table and function becomes a typed Model Context Protocol tool — `list_*`, `create_*`, `update_*`, `delete_*`, `call_*` — with discovery resources like `pgvis://schemas`. No glue code. Works with Claude Desktop and any MCP client.",
+    icon: "mcp",
+  },
+  {
+    title: "PostgREST-compatible",
+    body: "Same query DSL, the same `Prefer` header semantics, the same `PGRST*` error codes. A flat routing mode lets existing PostgREST clients keep working unchanged.",
+    icon: "rest",
+  },
+  {
+    title: "OpenAPI 3.0",
+    body: "Generated from the same introspected schema as REST and MCP — always in sync by construction. Print it with `pgvis openapi`, or fetch it from the API root with `Accept: application/openapi+json`.",
+    icon: "openapi",
+  },
+  {
+    title: "Rust & embeddable",
+    body: "`pgvis-core` is I/O-free and depends on no driver. Backends implement a single `Backend` trait. Add a database API to any Rust app with the `pgvis-lib` `Builder`.",
+    icon: "rust",
+  },
+  {
+    title: "Safe by construction",
+    body: "Parameterized SQL only. JWT verification with symmetric or asymmetric algorithms, role switching, and Row-Level Security via Postgres. Statement timeouts and a server-side row cap.",
+    icon: "shield",
+  },
+  {
+    title: "Backend-agnostic",
+    body: "Postgres today; a SQLite backend crate is in progress and on the roadmap. Dialect capability flags drive feature gating — no core rewrite needed for a new backend.",
+    icon: "backend",
+  },
+];
+---
+
+<Layout
+  title="pgvis — Postgres to MCP, REST & OpenAPI from one Rust engine"
+  description="Point pgvis at your Postgres database. It introspects the schema and serves it three ways: typed MCP tools for LLM agents, a PostgREST-compatible REST API, and an OpenAPI 3.0 spec — from one I/O-free Rust engine."
+>
+  <main>
+    <section class="hero">
+      <div class="container">
+        <a class="hero-badge" href="https://github.com/storyvis/pgvis" rel="noopener">
+          <span class="hero-badge-dot"></span>
+          Beta · active development · Postgres &amp; SQLite
+        </a>
+        <h1>
+          Turn Postgres into
+          <span class="gradient-text">MCP tools, a REST API &amp; OpenAPI</span>
+          — from one Rust engine
+        </h1>
+        <p class="subtitle">
+          Point pgvis at your Postgres database. It introspects the schema once and serves it three
+          ways from a single pipeline: typed Model Context Protocol tools for LLM agents, a
+          PostgREST-compatible REST API, and an OpenAPI 3.0 document. One parser, one planner, one
+          SQL builder — behavior stays consistent by design.
+        </p>
+        <div class="cta-group">
+          <a href="/docs/quickstart" class="btn btn-primary">
+            Quick start
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </a>
+          <a
+            href="https://github.com/storyvis/pgvis"
+            class="btn btn-secondary"
+            rel="noopener"
+            aria-label="pgvis source on GitHub"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.55v-1.93c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.51-1.47.11-3.07 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.78 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.6.23 2.78.11 3.07.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
+            </svg>
+            Star on GitHub
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">License</span>
+            <span class="hero-meta-value">Apache-2.0</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Language</span>
+            <span class="hero-meta-value">Rust · Edition 2024</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Protocol</span>
+            <span class="hero-meta-value">MCP · REST · OpenAPI</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="diagram">
+      <div class="container">
+        <div class="diagram-grid">
+          <div class="diagram-node diagram-source">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="12" cy="5" rx="9" ry="3" />
+              <path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+              <path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6" />
+            </svg>
+            Your Postgres database
+          </div>
+          <div class="diagram-arrow" aria-hidden="true">→</div>
+          <div class="diagram-node diagram-engine">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
+            </svg>
+            pgvis engine
+            <small>parse → plan → SQL</small>
+          </div>
+          <div class="diagram-arrow" aria-hidden="true">→</div>
+          <div class="diagram-surfaces">
+            <span class="diagram-surface">MCP</span>
+            <span class="diagram-surface">REST</span>
+            <span class="diagram-surface">OpenAPI</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Features</span>
+          <h2>One pipeline. Three surfaces. Zero glue.</h2>
+        </div>
+        <div class="feature-grid">
+          {features.map((f) => (
+            <article class="feature">
+              <div class={`feature-icon icon-${f.icon}`}>
+                {f.icon === "mcp" && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 2a4 4 0 0 0-4 4v1a4 4 0 0 0-4 4v1a4 4 0 0 0 4 4v1a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-1a4 4 0 0 0 4-4v-1a4 4 0 0 0-4-4V6a4 4 0 0 0-4-4z" />
+                    <path d="M12 8v8M8 12h8" />
+                  </svg>
+                )}
+                {f.icon === "rest" && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h10" />
+                    <circle cx="19" cy="17" r="2" />
+                  </svg>
+                )}
+                {f.icon === "openapi" && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 2v6h6M9 13h6M9 17h4" />
+                  </svg>
+                )}
+                {f.icon === "rust" && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6" />
+                  </svg>
+                )}
+                {f.icon === "shield" && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                )}
+                {f.icon === "backend" && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="6" rx="2" />
+                    <rect x="3" y="14" width="18" height="6" rx="2" />
+                    <path d="M7 7h.01M7 17h.01" />
+                  </svg>
+                )}
+              </div>
+              <h3>{f.title}</h3>
+              <p set:html={f.body.replace(/`([^`]+)`/g, "<code>$1</code>")} />
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="code-example">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Get started</span>
+          <h2>Up and running in three commands</h2>
+        </div>
+        <div class="code-tabs">
+          <div class="code-block">
+            <div class="code-block-head">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h10" />
+              </svg>
+              <span>REST API</span>
+            </div>
+            <pre><code>{`# build the CLI
+cargo build --release --bin pgvis
+
+# point it at your database
+export PGVIS_DSN="postgres://user@localhost/mydb"
+./target/release/pgvis serve --bind 0.0.0.0:3000
+
+# query
+curl "http://localhost:3000/api/public/users?select=id,name&active=eq.true"`}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-block-head">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2a4 4 0 0 0-4 4v1a4 4 0 0 0-4 4v1a4 4 0 0 0 4 4v1a4 4 0 0 0 4 4 4 4 0 0 0 4-4v-1a4 4 0 0 0 4-4v-1a4 4 0 0 0-4-4V6a4 4 0 0 0-4-4z" />
+              </svg>
+              <span>MCP for Claude Desktop</span>
+            </div>
+            <pre><code>{`// claude_desktop_config.json
+{
+  "mcpServers": {
+    "pgvis": {
+      "command": "pgvis",
+      "args": [
+        "--dsn", "postgres://localhost/mydb",
+        "mcp"
+      ]
+    }
+  }
+}`}</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-block-head">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3v18M3 12h18" />
+              </svg>
+              <span>Embed in Rust</span>
+            </div>
+            <pre><code>{`use pgvis_lib::Builder;
+
+// REST + MCP-over-HTTP router for axum::serve
+let router = Builder::new("postgres://localhost/mydb")
+    .schemas(vec!["public"])
+    .with_mcp_http()
+    .build()
+    .await?;`}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="why">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Why pgvis</span>
+          <h2>How it differs from PostgREST</h2>
+        </div>
+        <div class="why-grid">
+          <div class="why-card">
+            <h4>I/O-free, backend-agnostic core</h4>
+            <p>
+              <code>pgvis-core</code> does no I/O. Backends implement a single <code>Backend</code> trait
+              — Postgres today, SQLite in progress — without touching the engine.
+            </p>
+          </div>
+          <div class="why-card">
+            <h4>First-class MCP surface</h4>
+            <p>
+              MCP is not a bolt-on. Tables and functions lower into typed MCP tools through the same
+              plan → SQL path REST uses, so the two surfaces can never disagree.
+            </p>
+          </div>
+          <div class="why-card">
+            <h4>A library, not just a server</h4>
+            <p>
+              The CLI is one consumer of <code>pgvis-lib</code>. Embed the same stack in any Rust
+              app with the <code>Builder</code> facade.
+            </p>
+          </div>
+          <div class="why-card">
+            <h4>Schema-in-URL routing</h4>
+            <p>
+              Routes default to <code>/{`{prefix}`}/{`{schema}`}/{`{table}`}</code> with a flat
+              PostgREST-compatible mode available via routing config for drop-in replacement.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-bottom">
+      <div class="container">
+        <h2>Open source. Apache-2.0.</h2>
+        <p>Contributions welcome — issues, PRs, and design feedback all land on GitHub.</p>
+        <div class="cta-group">
+          <a href="/docs/introduction" class="btn btn-primary">Read the docs</a>
+          <a href="https://github.com/storyvis/pgvis" class="btn btn-secondary" rel="noopener">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.55v-1.93c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.51-1.47.11-3.07 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.78 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.6.23 2.78.11 3.07.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
+            </svg>
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>

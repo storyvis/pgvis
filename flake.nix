@@ -101,6 +101,9 @@
             pgcli
             postgrest
 
+            # Node.js (for website)
+            nodejs
+
             # Nix / general
             nil               # Nix LSP
             nixpkgs-fmt

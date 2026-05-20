@@ -1,0 +1,49 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Landing.astro";
+
+const posts = (await getCollection("blog"))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+---
+
+<Layout
+  title="Blog — pgvis"
+  description="Engineering notes, design decisions, and release announcements from the pgvis team."
+>
+  <main class="container blog-list">
+    <header class="blog-header">
+      <span class="eyebrow">Writing</span>
+      <h1>pgvis blog</h1>
+      <p class="lede">
+        Design notes, release announcements, and ideas about turning databases into agent-ready APIs.
+      </p>
+    </header>
+    <div class="posts">
+      {posts.map((post) => (
+        <article class="post-card">
+          <time datetime={post.data.date.toISOString()}>
+            {post.data.date.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </time>
+          <h2>
+            <a href={`/blog/${post.slug}`}>{post.data.title}</a>
+          </h2>
+          <p>{post.data.description}</p>
+          {post.data.tags && (
+            <div class="tags">
+              {post.data.tags.map((tag) => (
+                <span class="tag">#{tag}</span>
+              ))}
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+  </main>
+</Layout>
+
+<link rel="stylesheet" href="/styles/blog.css" />

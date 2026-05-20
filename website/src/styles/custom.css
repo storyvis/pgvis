@@ -1,0 +1,14 @@
+/* Starlight custom overrides */
+:root {
+  --sl-color-accent-low: #1a1a2e;
+  --sl-color-accent: #4f46e5;
+  --sl-color-accent-high: #818cf8;
+  --sl-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Dark mode accent colors */
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #1e1b4b;
+  --sl-color-accent: #6366f1;
+  --sl-color-accent-high: #a5b4fc;
+}

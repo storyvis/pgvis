@@ -1,0 +1,83 @@
+---
+title: MCP for AI Agents
+description: Using pgvis as an MCP server for LLM agents.
+---
+
+# MCP for AI Agents
+
+pgvis automatically generates [Model Context Protocol](https://modelcontextprotocol.io) tools from your database schema. Every table becomes a set of typed tools that LLM agents can discover and call.
+
+## What Gets Generated
+
+For each table in your exposed schemas, pgvis creates:
+
+| Tool | Purpose |
+|------|---------|
+| `list_{table}` | Query rows with filtering, ordering, pagination |
+| `create_{table}` | Insert one or more rows |
+| `update_{table}` | Update rows matching a filter |
+| `delete_{table}` | Delete rows matching a filter |
+
+For each function:
+
+| Tool | Purpose |
+|------|---------|
+| `call_{function}` | Call the database function with typed arguments |
+
+## Stdio Transport (Claude Desktop)
+
+Add to your Claude Desktop MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "pgvis": {
+      "command": "pgvis",
+      "args": ["--dsn", "postgres://user@localhost/mydb", "mcp"]
+    }
+  }
+}
+```
+
+## HTTP Transport
+
+Run alongside the REST API:
+
+```bash
+pgvis --dsn "postgres://user@localhost/mydb" serve --mcp-http
+```
+
+The MCP endpoint is available at `/mcp`.
+
+## Discovery Resources
+
+pgvis exposes MCP resources for schema discovery:
+
+- `pgvis://schemas` — list all available schemas
+- `pgvis://{schema}/schema` — describe tables, columns, and relationships in a schema
+
+## Tool Input Schema
+
+Each tool has a typed JSON Schema for its inputs. For example, `list_users` might accept:
+
+```json
+{
+  "select": "id,name,email",
+  "filter": { "active": "eq.true" },
+  "order": "name.asc",
+  "limit": 10
+}
+```
+
+## Embedding in Your Own App
+
+```rust
+use pgvis_lib::Builder;
+
+let mcp = Builder::new("postgres://localhost/mydb")
+    .schemas(vec!["public"])
+    .build_mcp_server()
+    .await?;
+
+pgvis_lib::pgvis_mcp::serve_stdio(mcp).await?;
+```

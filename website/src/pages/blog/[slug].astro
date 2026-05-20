@@ -1,0 +1,36 @@
+---
+import { getCollection } from "astro:content";
+import type { GetStaticPaths } from "astro";
+import Layout from "../../layouts/Landing.astro";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const posts = await getCollection("blog");
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+};
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+---
+
+<Layout title={`${post.data.title} — pgvis`} description={post.data.description}>
+  <main class="container blog-post">
+    <article>
+      <time datetime={post.data.date.toISOString()}>
+        {post.data.date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+      </time>
+      <h1>{post.data.title}</h1>
+      <p class="author">By {post.data.authorUrl ? <a href={post.data.authorUrl} target="_blank" rel="noopener noreferrer">{post.data.author}</a> : post.data.author}</p>
+      <Content />
+    </article>
+    <a href="/blog" class="back-link">← Back to all posts</a>
+  </main>
+</Layout>
+
+<link rel="stylesheet" href="/styles/blog.css" />

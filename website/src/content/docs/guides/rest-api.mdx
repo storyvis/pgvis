@@ -1,0 +1,105 @@
+---
+title: REST API
+description: Full guide to the PostgREST-compatible REST API.
+---
+
+# REST API Guide
+
+pgvis exposes a PostgREST-compatible REST API. If you've used PostgREST before, the query DSL is identical.
+
+## Route Structure
+
+By default, routes follow the pattern:
+
+```
+GET /api/{schema}/{table}
+```
+
+For the `public` schema:
+```
+GET /api/public/users
+GET /api/public/orders
+```
+
+## Selecting Columns
+
+Use the `select` query parameter:
+
+```bash
+# Specific columns
+curl "http://localhost:3000/api/public/users?select=id,name,email"
+
+# All columns (default)
+curl "http://localhost:3000/api/public/users"
+```
+
+## Filtering
+
+Filters use the `column=operator.value` syntax:
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `eq` | Equals | `name=eq.Widget` |
+| `neq` | Not equals | `name=neq.Widget` |
+| `gt` | Greater than | `price=gt.100` |
+| `gte` | Greater or equal | `price=gte.100` |
+| `lt` | Less than | `price=lt.50` |
+| `lte` | Less or equal | `price=lte.50` |
+| `like` | LIKE pattern | `name=like.*widget*` |
+| `ilike` | Case-insensitive LIKE | `name=ilike.*widget*` |
+| `is` | IS (null, true, false) | `deleted_at=is.null` |
+| `in` | IN list | `status=in.(active,pending)` |
+
+## Ordering
+
+```bash
+# Single column
+curl "http://localhost:3000/api/public/items?order=price.desc"
+
+# Multiple columns
+curl "http://localhost:3000/api/public/items?order=category.asc,price.desc"
+```
+
+## Pagination
+
+```bash
+# Limit and offset
+curl "http://localhost:3000/api/public/items?limit=10&offset=20"
+```
+
+## Mutations
+
+```bash
+# Create
+curl -X POST "http://localhost:3000/api/public/items" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Widget", "price": 9.99}'
+
+# Update
+curl -X PATCH "http://localhost:3000/api/public/items?id=eq.1" \
+  -H "Content-Type: application/json" \
+  -d '{"price": 12.99}'
+
+# Delete
+curl -X DELETE "http://localhost:3000/api/public/items?id=eq.1"
+```
+
+## RPC (Function Calls)
+
+```bash
+curl -X POST "http://localhost:3000/api/public/rpc/my_function" \
+  -H "Content-Type: application/json" \
+  -d '{"arg1": "value1"}'
+```
+
+## Prefer Header
+
+Control response behavior with the `Prefer` header:
+
+```bash
+# Return the created/updated rows
+curl -X POST ... -H "Prefer: return=representation"
+
+# Return only count
+curl ... -H "Prefer: count=exact"
+```

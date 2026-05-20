@@ -22,6 +22,7 @@ serde_json.workspace = true
 indexmap.workspace = true
 arc-swap.workspace = true
 openapiv3.workspace = true
+jsonwebtoken.workspace = true
 tracing.workspace = true
 thiserror.workspace = true
 futures.workspace = true

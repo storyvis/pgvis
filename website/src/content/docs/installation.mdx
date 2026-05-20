@@ -1,0 +1,63 @@
+---
+title: Installation
+description: All the ways to install and run pgvis.
+---
+
+# Installation
+
+## From Source (Cargo)
+
+```bash
+# Clone the repository
+git clone https://github.com/storyvis/pgvis.git
+cd pgvis
+
+# Build release binary
+cargo build --release --bin pgvis
+
+# The binary is at ./target/release/pgvis
+```
+
+## Nix
+
+If you have Nix with flakes enabled:
+
+```bash
+# Build
+nix build github:storyvis/pgvis
+
+# Or run directly
+nix run github:storyvis/pgvis -- serve --dsn "postgres://localhost/mydb"
+
+# Development shell
+nix develop
+```
+
+## Docker (Coming Soon)
+
+```bash
+docker run -e PGVIS_DSN="postgres://host.docker.internal/mydb" \
+  storyvisai/pgvis serve --bind 0.0.0.0:3000
+```
+
+## Verifying Installation
+
+```bash
+pgvis --version
+pgvis --help
+```
+
+## Configuration
+
+pgvis reads configuration from environment variables prefixed with `PGVIS_`:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `PGVIS_DSN` | Database connection string | *required* |
+| `PGVIS_BIND` | Server bind address | `0.0.0.0:3000` |
+| `PGVIS_SCHEMAS` | Schemas to expose (comma-separated) | `public` |
+| `PGVIS_JWT_SECRET` | JWT verification secret | none (anonymous) |
+| `PGVIS_ANON_ROLE` | Role for unauthenticated requests | none |
+| `PGVIS_MAX_ROWS` | Maximum rows returned | unlimited |
+
+See the [Configuration Reference](/docs/reference/configuration) for the full list.

@@ -1,14 +1,18 @@
 //! MCP tool generation and execution.
 //!
 //! [`build_mcp_tools`] generates tool definitions from the SchemaCache (parallel to REST's `build_app`).
-//! [`handle_tool_call`] executes a tool call through the same `plan_request()` pipeline as REST.
+//! [`handle_tool_call`] executes a tool call through the same `plan_request()` → SQL → execute pipeline as REST.
 
+use pgvis_core::backend::{Backend, ExecContext};
 use pgvis_core::cache::{Routine, Table};
 use pgvis_core::config::RoutingConfig;
 use pgvis_core::plan::{plan_request, ActionPlan, ApiRequest, RequestBody, RequestMethod};
 use pgvis_core::preferences::Preferences;
-use pgvis_core::query_params::types::{Filter, FilterValue, Operator, RangeSpec};
-use pgvis_core::select_ast::SelectItem;
+use pgvis_core::query;
+use pgvis_core::query_params::types::{
+    Filter, FilterValue, NullsOrder, Operator, OrderDirection, OrderTerm, RangeSpec,
+};
+use pgvis_core::select_ast::{FieldSelect, SelectItem};
 use pgvis_core::{Config, Dialect, SchemaCache};
 
 use crate::types::*;
@@ -132,15 +136,27 @@ pub fn build_mcp_resources(cache: &SchemaCache, config: &Config) -> Vec<McpResou
 // handle_tool_call — execute a tool through the plan pipeline
 // ---------------------------------------------------------------------------
 
-/// Handle an MCP tool call by converting it to an ApiRequest and running `plan_request`.
+/// Handle an MCP tool call by converting it to an ApiRequest and running the
+/// full plan → render SQL → execute pipeline.
 ///
 /// This is the MCP equivalent of the REST handler's dispatch logic. Both
 /// convert their input format to `ApiRequest` and run through the same pipeline.
-pub fn handle_tool_call(
+///
+/// # Auth model
+///
+/// MCP tool calls always execute as [`Config::anon_role`]. Unlike the REST path
+/// (which extracts and verifies a JWT from the `Authorization` header), the MCP
+/// surface has no token-passing mechanism in the current protocol. For stdio
+/// transport this is acceptable because the process itself is trusted (e.g.
+/// Claude Desktop launches it). For Streamable HTTP deployments, consider
+/// placing an auth proxy in front of the MCP endpoint or implementing
+/// session-level token injection in a future protocol revision.
+pub async fn handle_tool_call(
     call: &McpToolCall,
     cache: &SchemaCache,
     dialect: &Dialect,
     config: &Config,
+    backend: &dyn Backend,
 ) -> McpToolResult {
     // 1. Parse tool name → schema + verb + target
     let (schema, verb, target) = match parse_tool_name(&call.name, &config.routing) {
@@ -164,7 +180,7 @@ pub fn handle_tool_call(
     let select = args
         .and_then(|a| a.get("select"))
         .and_then(|v| v.as_str())
-        .map(|_s| vec![SelectItem::Star]) // TODO: parse select string
+        .map(|s| parse_mcp_select(s))
         .unwrap_or_else(|| vec![SelectItem::Star]);
 
     let filters = parse_mcp_filters(args);
@@ -215,6 +231,8 @@ pub fn handle_tool_call(
         None
     };
 
+    let is_mutation = matches!(verb, "create" | "update" | "delete");
+
     let api_request = ApiRequest {
         schema: schema.to_string(),
         target: target.to_string(),
@@ -222,7 +240,7 @@ pub fn handle_tool_call(
         is_rpc: verb == "call",
         select,
         filters,
-        order: Vec::new(), // TODO: parse order from args
+        order: parse_mcp_order(args),
         range,
         preferences: Preferences::default(),
         body,
@@ -232,19 +250,51 @@ pub fn handle_tool_call(
     };
 
     // 4. Plan the request (same pipeline as REST)
-    match plan_request(&api_request, cache, dialect, config) {
-        Ok(plan) => {
-            // TODO: SQL builder + execution — for now return the plan summary
-            McpToolResult::success(serde_json::json!({
-                "status": "planned",
-                "tool": call.name,
-                "plan_type": match &plan {
-                    ActionPlan::Read(_) => "read",
-                    ActionPlan::Mutate(_) => "mutate",
-                    ActionPlan::Call(_) => "call",
-                    ActionPlan::Inspect(_) => "inspect",
-                },
-            }))
+    let plan = match plan_request(&api_request, cache, dialect, config) {
+        Ok(plan) => plan,
+        Err(err) => return McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
+    };
+
+    // For Inspect plans, return metadata directly
+    if let ActionPlan::Inspect(_) = &plan {
+        return McpToolResult::success(serde_json::json!({
+            "status": "inspect",
+            "message": "Schema inspection is available via MCP resources (pgvis://schemas)"
+        }));
+    }
+
+    // 5. Render the plan to SQL + parameters
+    let (sql, params) = if dialect.supports_set_local {
+        // Postgres path: CTE-wrapped SQL
+        match query::render(&plan, dialect) {
+            Ok(rendered) => rendered,
+            Err(err) => return McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
+        }
+    } else {
+        // SQLite path: render without CTE wrapping
+        match query::render_inner(&plan, dialect) {
+            Ok(rendered) => rendered,
+            Err(err) => return McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
+        }
+    };
+
+    // 6. Build ExecContext
+    let exec_ctx = ExecContext {
+        role: config.anon_role.clone(),
+        claims: None,
+        pre_request: config.pre_request.clone(),
+        statement_timeout: config.statement_timeout_ms,
+        tx_end: None,
+        is_mutation,
+    };
+
+    // 7. Execute via backend
+    match backend.execute(&exec_ctx, &sql, &params).await {
+        Ok(result) => {
+            // Return the query result body as the tool output
+            let body_str = serde_json::to_string_pretty(&result.body)
+                .unwrap_or_else(|_| result.body.to_string());
+            McpToolResult::success_text(body_str)
         }
         Err(err) => McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
     }
@@ -513,6 +563,9 @@ fn parse_tool_name<'a>(
 }
 
 /// Parse MCP filter arguments into pgvis Filter types.
+///
+/// Supports the PostgREST filter syntax: `"op.value"` or `"not.op.value"`.
+/// Examples: `"eq.5"`, `"not.eq.5"`, `"gt.10"`, `"like.*foo*"`, `"is.null"`.
 fn parse_mcp_filters(
     args: Option<&serde_json::Map<String, serde_json::Value>>,
 ) -> Vec<Filter> {
@@ -523,18 +576,19 @@ fn parse_mcp_filters(
     {
         for (column, value) in filter_obj {
             if let Some(value_str) = value.as_str() {
-                // Parse "operator.value" format
-                if let Some(dot_pos) = value_str.find('.') {
-                    let op_str = &value_str[..dot_pos];
-                    let val_str = &value_str[dot_pos + 1..];
+                // Handle negation prefix: "not.op.value" → negate=true, rest="op.value"
+                let (negate, rest) = if let Some(stripped) = value_str.strip_prefix("not.") {
+                    (true, stripped)
+                } else {
+                    (false, value_str)
+                };
 
-                    let (negate, actual_op_str) = if let Some(stripped) = op_str.strip_prefix("not.") {
-                        (true, stripped)
-                    } else {
-                        (false, op_str)
-                    };
+                // Parse "operator.value" from the remainder
+                if let Some(dot_pos) = rest.find('.') {
+                    let op_str = &rest[..dot_pos];
+                    let val_str = &rest[dot_pos + 1..];
 
-                    if let Some(operator) = parse_operator(actual_op_str) {
+                    if let Some(operator) = parse_operator(op_str) {
                         filters.push(Filter {
                             field: column.clone(),
                             json_path: Vec::new(),
@@ -579,5 +633,93 @@ fn pg_type_to_json_type(pg_type: &str) -> &'static str {
         "json" | "jsonb" => "object",
         _ => "string",
     }
+}
+
+/// Parse a comma-separated select string into `SelectItem` entries.
+///
+/// Supports simple column names and `*`. Embedding syntax (e.g. `posts(title)`)
+/// is not yet handled here — it falls back to treating the whole token as a field name.
+///
+/// Examples: `"id,name,email"` → three `SelectItem::Field` items.
+///           `"*"` → `[SelectItem::Star]`.
+fn parse_mcp_select(s: &str) -> Vec<SelectItem> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() || trimmed == "*" {
+        return vec![SelectItem::Star];
+    }
+
+    trimmed
+        .split(',')
+        .map(|part| {
+            let part = part.trim();
+            if part == "*" {
+                SelectItem::Star
+            } else {
+                // Handle alias:column syntax
+                let (alias, name) = if let Some(colon_pos) = part.find(':') {
+                    (
+                        Some(part[..colon_pos].to_string()),
+                        part[colon_pos + 1..].to_string(),
+                    )
+                } else {
+                    (None, part.to_string())
+                };
+
+                SelectItem::Field(FieldSelect {
+                    name,
+                    alias,
+                    json_path: Vec::new(),
+                    cast: None,
+                    aggregate: None,
+                    aggregate_cast: None,
+                })
+            }
+        })
+        .collect()
+}
+
+/// Parse the `order` argument string into `OrderTerm` entries.
+///
+/// Supports the PostgREST order format: `"column.direction.nulls"`.
+/// Examples: `"name.asc"`, `"age.desc.nullsfirst"`, `"id"` (defaults to asc).
+fn parse_mcp_order(args: Option<&serde_json::Map<String, serde_json::Value>>) -> Vec<OrderTerm> {
+    let order_str = match args.and_then(|a| a.get("order")).and_then(|v| v.as_str()) {
+        Some(s) if !s.is_empty() => s,
+        _ => return Vec::new(),
+    };
+
+    order_str
+        .split(',')
+        .filter_map(|part| {
+            let part = part.trim();
+            if part.is_empty() {
+                return None;
+            }
+
+            let segments: Vec<&str> = part.splitn(3, '.').collect();
+            let field = segments[0].to_string();
+
+            let direction = segments
+                .get(1)
+                .map(|s| match *s {
+                    "desc" => OrderDirection::Desc,
+                    _ => OrderDirection::Asc,
+                })
+                .unwrap_or(OrderDirection::Asc);
+
+            let nulls = segments.get(2).and_then(|s| match *s {
+                "nullsfirst" => Some(NullsOrder::First),
+                "nullslast" => Some(NullsOrder::Last),
+                _ => None,
+            });
+
+            Some(OrderTerm {
+                field,
+                json_path: Vec::new(),
+                direction,
+                nulls,
+            })
+        })
+        .collect()
 }
 

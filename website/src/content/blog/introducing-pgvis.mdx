@@ -1,0 +1,34 @@
+---
+title: "Introducing pgvis: Database → API → MCP in One Engine"
+description: "pgvis turns any Postgres database into MCP tools for LLM agents, a PostgREST-compatible REST API, and an OpenAPI 3.0 spec — from a single Rust engine."
+date: 2025-05-21
+author: "Lava Bokam"
+authorUrl: "https://www.linkedin.com/in/lavabokam/"
+tags: ["announcement", "open-source", "postgres", "mcp"]
+---
+
+# Introducing pgvis
+
+We're excited to announce **pgvis** — an open-source Rust engine that turns any Postgres database into three things simultaneously:
+
+1. **MCP tools** for LLM agents
+2. **A PostgREST-compatible REST API**
+3. **An OpenAPI 3.0 document**
+
+All from a single introspection of your database schema, with one shared pipeline so the three surfaces stay consistent by construction.
+
+## Why We Built This
+
+The rise of LLM agents created a new problem: how do you give an AI agent structured, safe access to your database? Hand-writing tool schemas is tedious and error-prone. We wanted a system where the database schema *is* the contract — introspect once, serve everywhere.
+
+At the same time, we wanted PostgREST compatibility so existing tooling continues to work. And we wanted it in Rust for performance, safety, and embeddability.
+
+## What's Next
+
+pgvis is in beta — no tagged releases yet, but `main` is exercised by the test suite. The Postgres and SQLite backends both work today across REST, OpenAPI, and MCP. On the roadmap:
+
+- MCP stdio hardening
+- MCP over SSE
+- Stable embed API and the first tagged release
+
+Check out the [Quick Start](/docs/quickstart) to try it, or browse the [source on GitHub](https://github.com/storyvis/pgvis).

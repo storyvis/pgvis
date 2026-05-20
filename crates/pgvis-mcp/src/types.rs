@@ -78,6 +78,14 @@ impl McpToolResult {
         }
     }
 
+    /// Create a successful result with a pre-formatted text string.
+    pub fn success_text(text: String) -> Self {
+        Self {
+            content: vec![McpContent::Text { text }],
+            is_error: false,
+        }
+    }
+
     /// Create an error result.
     pub fn error(message: impl Into<String>) -> Self {
         Self {

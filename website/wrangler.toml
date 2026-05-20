@@ -1,0 +1,14 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "pgvis-website"
+compatibility_date = "2025-04-01"
+
+[assets]
+directory = "./dist"
+
+[[routes]]
+pattern = "pgvis.io/*"
+custom_domain = true
+
+[[routes]]
+pattern = "www.pgvis.io/*"
+custom_domain = true

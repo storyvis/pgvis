@@ -1,0 +1,212 @@
+/* Blog-specific styles. Header/footer/typography come from landing.css. */
+
+.blog-list,
+.blog-post {
+  max-width: 800px;
+  padding-top: 3.5rem;
+  padding-bottom: 4rem;
+}
+
+.blog-header {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.blog-header h1 {
+  font-size: clamp(2.25rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-strong);
+  margin: 0.4rem 0 0.75rem;
+}
+
+.blog-header .lede {
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.posts {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.post-card {
+  background: linear-gradient(180deg, var(--color-bg-secondary), var(--color-bg-elev));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 2rem;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-card);
+}
+
+.post-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -16px rgba(99, 102, 241, 0.3);
+}
+
+.post-card time {
+  color: var(--color-text-dim);
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+}
+
+.post-card h2 {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.post-card h2 a {
+  color: var(--color-text-strong);
+  transition: color 0.15s;
+}
+
+.post-card h2 a:hover {
+  color: var(--color-primary);
+}
+
+.post-card p {
+  color: var(--color-text-muted);
+  line-height: 1.65;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: #a5b4fc;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+/* Blog post */
+.blog-post article {
+  padding-top: 1rem;
+}
+
+.blog-post time {
+  color: var(--color-text-dim);
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+}
+
+.blog-post h1 {
+  margin: 0.5rem 0 0.5rem;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-strong);
+}
+
+.blog-post .author {
+  color: var(--color-text-muted);
+  margin-bottom: 2.5rem;
+  font-size: 0.95rem;
+}
+
+.blog-post article :is(h2, h3) {
+  margin-top: 2.2rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-text-strong);
+  letter-spacing: -0.01em;
+}
+
+.blog-post article h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.blog-post article h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.blog-post article p {
+  margin-bottom: 1.15rem;
+  line-height: 1.75;
+  color: var(--color-text);
+}
+
+.blog-post article a {
+  color: #a5b4fc;
+  text-decoration: underline;
+  text-decoration-color: rgba(165, 180, 252, 0.4);
+  text-underline-offset: 3px;
+}
+
+.blog-post article a:hover {
+  text-decoration-color: currentColor;
+}
+
+.blog-post article code {
+  background: rgba(99, 102, 241, 0.12);
+  color: #c7d2fe;
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.blog-post article pre {
+  background: var(--color-bg-elev);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.blog-post article pre code {
+  background: none;
+  padding: 0;
+  color: var(--color-text);
+}
+
+.blog-post article ol,
+.blog-post article ul {
+  padding-left: 1.5rem;
+  margin-bottom: 1.15rem;
+}
+
+.blog-post article li {
+  margin-bottom: 0.35rem;
+  line-height: 1.75;
+}
+
+.blog-post article blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 3rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: color 0.15s;
+}
+
+.back-link:hover {
+  color: var(--color-text-strong);
+}

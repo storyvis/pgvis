@@ -132,7 +132,27 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// Load configuration from file and/or environment variables.
-fn load_config(_path: Option<&std::path::Path>) -> anyhow::Result<Config> {
-    // For now, use defaults. Full figment layering will be added later.
-    Ok(Config::default())
+///
+/// Configuration is layered (later sources override earlier):
+/// 1. Defaults from [`Config::default()`]
+/// 2. TOML config file (if `--config` flag or `PGVIS_CONFIG` env var is set)
+/// 3. Environment variables prefixed with `PGVIS_`
+fn load_config(path: Option<&std::path::Path>) -> anyhow::Result<Config> {
+    use figment::providers::{Env, Format, Serialized, Toml};
+    use figment::Figment;
+
+    let mut figment = Figment::from(Serialized::defaults(Config::default()));
+
+    // Layer 2: TOML config file (if provided)
+    if let Some(path) = path {
+        figment = figment.merge(Toml::file(path));
+    }
+
+    // Layer 3: Environment variables (PGVIS_SCHEMAS, PGVIS_JWT_SECRET, etc.)
+    // Uses lowercase field names with underscore splitting:
+    // PGVIS_JWT_SECRET → jwt_secret, PGVIS_MAX_ROWS → max_rows
+    figment = figment.merge(Env::prefixed("PGVIS_").lowercase(true));
+
+    let config: Config = figment.extract()?;
+    Ok(config)
 }

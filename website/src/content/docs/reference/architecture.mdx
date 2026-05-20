@@ -1,0 +1,53 @@
+---
+title: Architecture
+description: How pgvis is structured internally.
+---
+
+# Architecture
+
+pgvis is a seven-crate Rust workspace. All dependencies point inward to the I/O-free core.
+
+## Crate Map
+
+| Crate | Role |
+|-------|------|
+| `pgvis-core` | I/O-free engine: query parser, plan layer, SQL builder, schema cache |
+| `pgvis-postgres` | Postgres backend: connection pool, introspection, execution |
+| `pgvis-sqlite` | SQLite backend: introspection and execution |
+| `pgvis-router` | axum REST router + OpenAPI generator |
+| `pgvis-mcp` | MCP tools & resources (stdio + Streamable HTTP) |
+| `pgvis-lib` | `Builder` facade — the one way to assemble the stack |
+| `pgvis-server` | The `pgvis` CLI binary |
+
+## Request Lifecycle
+
+```
+HTTP Request / MCP Tool Call
+        │
+        ▼
+   Parse into ApiRequest
+        │
+        ▼
+   plan_request (validate, resolve relationships)
+        │
+        ▼
+   render SQL (parameterized)
+        │
+        ▼
+   Backend::execute (Postgres/SQLite)
+        │
+        ▼
+   Format Response (JSON / OpenAPI / MCP result)
+```
+
+## Key Design Decisions
+
+1. **I/O-free core** — `pgvis-core` does no I/O. Database drivers implement a `Backend` trait. This makes the engine embeddable and testable.
+
+2. **One pipeline, three surfaces** — REST, OpenAPI, and MCP all lower into `ApiRequest → plan → SQL`. Behavior never diverges.
+
+3. **Backend-agnostic** — A `Dialect` capability system drives feature gating. SQLite works with no core rewrite.
+
+4. **PostgREST-compatible** — Same query DSL, `Prefer` semantics, and error codes. Drop-in replacement for existing clients.
+
+For the full architecture reference, see the [arch/ directory](https://github.com/storyvis/pgvis/tree/main/arch) in the repository.

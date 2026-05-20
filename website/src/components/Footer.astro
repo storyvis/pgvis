@@ -1,0 +1,46 @@
+---
+import Default from "@astrojs/starlight/components/Footer.astro";
+---
+
+<Default><slot /></Default>
+
+<div class="pgvis-org-credit">
+  <span>Built by</span>
+  <a href="https://storyvis.ai" rel="noopener">Storyvis AI</a>
+  <span class="sep">·</span>
+  <a href="/vision">Vision &amp; roadmap</a>
+  <span class="sep">·</span>
+  <a href="https://github.com/storyvis/pgvis" rel="noopener">GitHub</a>
+</div>
+
+<style>
+  .pgvis-org-credit {
+    margin: 2rem auto 0;
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--sl-color-gray-5);
+    text-align: center;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .pgvis-org-credit a {
+    color: var(--sl-color-text);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px dashed var(--sl-color-gray-5);
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .pgvis-org-credit a:hover {
+    color: var(--sl-color-accent-high);
+    border-bottom-color: currentColor;
+  }
+
+  .pgvis-org-credit .sep {
+    color: var(--sl-color-gray-4);
+  }
+</style>

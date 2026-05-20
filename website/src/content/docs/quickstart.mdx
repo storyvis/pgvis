@@ -1,0 +1,63 @@
+---
+title: Quick Start
+description: Get pgvis running in under 2 minutes.
+---
+
+# Quick Start
+
+Get a REST API, MCP tools, and OpenAPI spec from your Postgres database in under 2 minutes.
+
+## Prerequisites
+
+- A stable Rust toolchain (edition 2024) — or use Nix
+- A running PostgreSQL instance
+
+## Build & Run
+
+```bash
+# Build the CLI
+cargo build --release --bin pgvis
+
+# Point it at your database and serve
+export PGVIS_DSN="postgres://user@localhost/mydb"
+./target/release/pgvis serve --bind 0.0.0.0:3000
+```
+
+## First Request
+
+```bash
+# List rows from a table in the public schema
+curl "http://localhost:3000/api/public/your_table"
+
+# Select specific columns
+curl "http://localhost:3000/api/public/items?select=id,name,price"
+
+# Filter rows
+curl "http://localhost:3000/api/public/items?price=gte.99.99"
+```
+
+## MCP for AI Agents
+
+```bash
+# stdio transport (for Claude Desktop)
+pgvis --dsn "postgres://user@localhost/mydb" mcp
+
+# or HTTP transport alongside REST
+pgvis --dsn "postgres://user@localhost/mydb" serve --mcp-http
+```
+
+## Nix Users
+
+```bash
+# Drop into a dev shell
+nix develop
+
+# Or build directly
+nix build
+```
+
+## Next Steps
+
+- [Installation](/docs/installation) — Docker, Nix, cargo install
+- [REST Guide](/docs/guides/rest-api) — full query DSL reference
+- [MCP Guide](/docs/guides/mcp) — using pgvis with LLM agents

@@ -342,9 +342,13 @@ async fn dispatch_request(
 
     tracing::debug!(sql = %sql, params = ?params_vec, "executing query");
 
-    // 4. Build ExecContext from config + preferences
+    // 4. Verify JWT and build ExecContext
+    let auth = match verify_jwt(headers, &state.config) {
+        Ok(auth) => auth,
+        Err(response) => return response,
+    };
     let is_mutation = matches!(&plan, ActionPlan::Mutate(_));
-    let exec_ctx = build_exec_context(&state.config, &preferences, is_mutation);
+    let exec_ctx = build_exec_context(&state.config, &auth, &preferences, is_mutation);
 
     // 5. Execute via backend
     let result = match state.backend.execute(&exec_ctx, &sql, &params_vec).await {
@@ -452,21 +456,144 @@ fn build_api_request(
     }
 }
 
-/// Build an [`ExecContext`] from configuration and request preferences.
+/// The result of JWT verification — either authenticated claims or anonymous.
+struct AuthResult {
+    /// The role to SET LOCAL to (from JWT claim or anon_role).
+    role: Option<String>,
+    /// The full JWT claims as a JSON value (for GUC propagation).
+    claims: Option<serde_json::Value>,
+}
+
+/// Verify the JWT from the Authorization header and extract role + claims.
 ///
-/// In a full implementation, this would also extract the JWT role and claims.
-/// For now, we use the anonymous role from config.
-fn build_exec_context(config: &Config, preferences: &Preferences, is_mutation: bool) -> ExecContext {
+/// Returns `Ok(AuthResult)` on success (including anonymous access when no JWT
+/// is required). Returns `Err(Response)` when auth fails and the request should
+/// be rejected immediately.
+fn verify_jwt(headers: &HeaderMap, config: &Config) -> Result<AuthResult, Response> {
+    // If no JWT secret is configured, all requests are anonymous
+    let secret = match &config.jwt_secret {
+        Some(s) => s,
+        None => {
+            return Ok(AuthResult {
+                role: config.anon_role.clone(),
+                claims: None,
+            });
+        }
+    };
+
+    // Extract the Bearer token from the Authorization header
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer ").or_else(|| s.strip_prefix("bearer ")));
+
+    let token = match token {
+        Some(t) => t,
+        None => {
+            // No token provided — use anonymous role if configured
+            if config.anon_role.is_some() {
+                return Ok(AuthResult {
+                    role: config.anon_role.clone(),
+                    claims: None,
+                });
+            }
+            // No anon role and no token — reject
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({
+                    "code": "PGRST300",
+                    "message": "JWT token required but not provided",
+                    "details": null,
+                    "hint": "Provide an Authorization: Bearer <token> header",
+                })),
+            ).into_response());
+        }
+    };
+
+    // Build the decoding key based on the algorithm
+    use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+    use pgvis_core::config::JwtAlgorithm;
+
+    let algorithm = match config.jwt_algo {
+        JwtAlgorithm::HS256 => Algorithm::HS256,
+        JwtAlgorithm::HS384 => Algorithm::HS384,
+        JwtAlgorithm::HS512 => Algorithm::HS512,
+        JwtAlgorithm::RS256 => Algorithm::RS256,
+        JwtAlgorithm::EdDSA => Algorithm::EdDSA,
+    };
+
+    let decoding_key = match algorithm {
+        Algorithm::HS256 | Algorithm::HS384 | Algorithm::HS512 => {
+            DecodingKey::from_secret(secret.as_bytes())
+        }
+        Algorithm::RS256 => {
+            DecodingKey::from_rsa_pem(secret.as_bytes()).unwrap_or_else(|_| {
+                DecodingKey::from_secret(secret.as_bytes())
+            })
+        }
+        Algorithm::EdDSA => {
+            DecodingKey::from_ed_pem(secret.as_bytes()).unwrap_or_else(|_| {
+                DecodingKey::from_secret(secret.as_bytes())
+            })
+        }
+        _ => DecodingKey::from_secret(secret.as_bytes()),
+    };
+
+    let mut validation = Validation::new(algorithm);
+    validation.validate_exp = true;
+    // Don't require specific claims beyond exp
+    validation.required_spec_claims = std::collections::HashSet::new();
+
+    match decode::<serde_json::Value>(token, &decoding_key, &validation) {
+        Ok(token_data) => {
+            let claims = token_data.claims;
+            // Extract role from claims using the configured key
+            let role = claims
+                .get(&config.role_claim_key)
+                .and_then(|v| v.as_str())
+                .map(String::from)
+                .or_else(|| config.anon_role.clone());
+
+            Ok(AuthResult {
+                role,
+                claims: Some(claims),
+            })
+        }
+        Err(err) => {
+            use jsonwebtoken::errors::ErrorKind;
+            let (code, message) = match err.kind() {
+                ErrorKind::ExpiredSignature => ("PGRST302", "JWT token has expired"),
+                _ => ("PGRST301", "JWT token verification failed"),
+            };
+            Err((
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({
+                    "code": code,
+                    "message": message,
+                    "details": err.to_string(),
+                    "hint": null,
+                })),
+            ).into_response())
+        }
+    }
+}
+
+/// Build an [`ExecContext`] from configuration, auth result, and request preferences.
+fn build_exec_context(
+    config: &Config,
+    auth: &AuthResult,
+    preferences: &Preferences,
+    is_mutation: bool,
+) -> ExecContext {
     let tx_end = preferences.tx.and_then(|tx| match tx {
         PreferTx::Commit => Some(TxEnd::Commit),
         PreferTx::Rollback => Some(TxEnd::Rollback),
     });
 
     ExecContext {
-        role: config.anon_role.clone(),
-        claims: None, // TODO: extract from JWT when auth is implemented
+        role: auth.role.clone(),
+        claims: auth.claims.clone(),
         pre_request: config.pre_request.clone(),
-        // Always enforce a statement timeout to prevent runaway queries
         statement_timeout: config.statement_timeout_ms,
         tx_end,
         is_mutation,

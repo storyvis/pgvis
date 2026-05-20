@@ -1,0 +1,32 @@
+---
+title: Introduction
+description: What is pgvis and why it exists.
+---
+
+# What is pgvis?
+
+**pgvis** turns any Postgres database into MCP tools for LLM agents — plus a PostgREST-compatible REST API and an OpenAPI 3.0 document — from one Rust engine.
+
+## The Problem
+
+Building database APIs is repetitive. Building MCP tools for AI agents is new and undocumented. Maintaining consistency between REST endpoints, API documentation, and agent tooling is painful.
+
+## The Solution
+
+Point pgvis at a database. It introspects the schema once at startup and then serves that schema **three ways from a single pipeline** — one query parser, one planner, one SQL builder:
+
+- **MCP** — every table and function becomes a typed [Model Context Protocol](https://modelcontextprotocol.io) tool an LLM agent can call. No glue code, no hand-written tool schemas.
+- **REST** — a PostgREST-compatible HTTP API: the same query DSL, the same `Prefer` semantics, the same `PGRST*` error codes, so existing PostgREST clients work unchanged.
+- **OpenAPI** — an OpenAPI 3.0 document generated from the same introspected schema.
+
+## Key Properties
+
+- **One engine, three surfaces.** REST, OpenAPI, and MCP share the same planner and SQL builder — they stay consistent by construction.
+- **Backend-agnostic.** The I/O-free core works with any database that implements the `Backend` trait. Postgres and SQLite today.
+- **A library, not just a server.** Embed pgvis in any Rust application with `pgvis-lib`.
+- **Safe by construction.** Parameterized SQL, JWT auth, role switching, RLS, statement timeouts.
+
+## Next Steps
+
+- [Quick Start](/docs/quickstart) — get running in 2 minutes
+- [Installation](/docs/installation) — all the ways to install pgvis

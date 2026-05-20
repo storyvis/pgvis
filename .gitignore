@@ -5,3 +5,9 @@
 .direnv/
 result
 plans/
+
+# Website
+website/node_modules/
+website/dist/
+website/.astro/
+website/.wrangler/
