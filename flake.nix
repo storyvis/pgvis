@@ -103,6 +103,7 @@
 
             # Node.js (for website)
             nodejs
+            wrangler
 
             # Nix / general
             nil               # Nix LSP
