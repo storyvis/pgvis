@@ -429,9 +429,14 @@ fn build_session_setup(ctx: &ExecContext) -> Result<String, Error> {
 
     // Pre-request function call
     // pre_request is a qualified function name like "auth.check_request"
-    // It comes from server config (not user input), so direct interpolation is acceptable.
+    // Quote each identifier part to prevent SQL injection via config values.
     if let Some(pre_req) = &ctx.pre_request {
-        write!(sql, "SELECT {pre_req}();").unwrap();
+        let quoted = pre_req
+            .split('.')
+            .map(|part| quote_ident(part))
+            .collect::<Vec<_>>()
+            .join(".");
+        write!(sql, "SELECT {quoted}();").unwrap();
     }
 
     Ok(sql)
@@ -858,7 +863,8 @@ mod tests {
             ..Default::default()
         };
         let sql = build_session_setup(&ctx).unwrap();
-        assert!(sql.contains("SELECT auth.check_request()"));
+        // Each part of the qualified name is quoted
+        assert!(sql.contains("SELECT \"auth\".\"check_request\"()"));
     }
 
     #[test]
@@ -876,7 +882,7 @@ mod tests {
         assert!(sql.contains("SET LOCAL role"));
         assert!(sql.contains("SET LOCAL request.jwt.claims"));
         assert!(sql.contains("SET LOCAL statement_timeout"));
-        assert!(sql.contains("SELECT auth.pre()"));
+        assert!(sql.contains("SELECT \"auth\".\"pre\"()"));
         // Count semicolons to verify batching (at least 4 statements)
         assert!(sql.matches(';').count() >= 4);
     }

@@ -24,7 +24,7 @@ use pgvis_core::backend::{Backend, ExecContext, TxEnd};
 use pgvis_core::plan::{plan_request, ActionPlan, ApiRequest, RequestBody, RequestMethod};
 use pgvis_core::preferences::{PreferTx, Preferences};
 use pgvis_core::query;
-use pgvis_core::query_params::{self, OrderItem};
+use pgvis_core::query_params::{self, LogicTree, OrderItem};
 use pgvis_core::select_ast::SelectItem;
 use pgvis_core::config::OpenApiMode;
 use pgvis_core::{Config, Dialect, SchemaCache};
@@ -183,9 +183,9 @@ async fn handle_rpc_with_schema(
     let schema = params.get("schema").cloned().unwrap_or_default();
     let function = params.get("function").cloned().unwrap_or_default();
 
-    // RPC accepts both GET and POST — always plan as Post for function call
-    let _ = method;
-    dispatch_request(&state, schema, function, RequestMethod::Post, true, &headers, &query_params, body.map(|b| b.0)).await
+    // RPC accepts GET (immutable functions, args from query params) and POST (args from body)
+    let request_method = http_method_to_request_method(&method);
+    dispatch_request(&state, schema, function, request_method, true, &headers, &query_params, body.map(|b| b.0)).await
 }
 
 // ---------------------------------------------------------------------------
@@ -220,8 +220,9 @@ async fn handle_rpc_no_schema(
     let function = params.get("function").cloned().unwrap_or_default();
     let schema = resolve_schema_from_headers(&headers, &state.config);
 
-    let _ = method;
-    dispatch_request(&state, schema, function, RequestMethod::Post, true, &headers, &query_params, body.map(|b| b.0)).await
+    // RPC accepts GET (immutable functions, args from query params) and POST (args from body)
+    let request_method = http_method_to_request_method(&method);
+    dispatch_request(&state, schema, function, request_method, true, &headers, &query_params, body.map(|b| b.0)).await
 }
 
 // ---------------------------------------------------------------------------
@@ -439,6 +440,9 @@ fn build_api_request(
         s.split(',').map(|c| c.trim().to_string()).collect()
     });
 
+    // Parse logic filters (and=, or=, not.and=, not.or=)
+    let logic_filters = parse_logic_filters_from_params(params);
+
     ApiRequest {
         schema,
         target,
@@ -452,7 +456,7 @@ fn build_api_request(
         body: request_body,
         on_conflict,
         columns,
-        logic_filters: Vec::new(), // TODO: parse and/or logic from query params
+        logic_filters,
     }
 }
 
@@ -622,6 +626,10 @@ fn parse_filters_from_params(
         if RESERVED.contains(&key.as_str()) {
             continue;
         }
+        // Skip logic filter keys — they're handled by parse_logic_filters_from_params
+        if is_logic_filter_key(key) {
+            continue;
+        }
         // Try to parse as a filter: column=operator.value
         if let Ok(filter) = query_params::parse_filter(key, value) {
             filters.push(filter);
@@ -632,6 +640,47 @@ fn parse_filters_from_params(
     filters.sort_by(|a, b| a.field.cmp(&b.field));
 
     filters
+}
+
+/// Check if a query parameter key is a logic filter operator.
+///
+/// Logic filter keys are: `and`, `or`, `not.and`, `not.or`.
+fn is_logic_filter_key(key: &str) -> bool {
+    matches!(key, "and" | "or" | "not.and" | "not.or")
+}
+
+/// Parse logic filter expressions (`and=`, `or=`, `not.and=`, `not.or=`) from query parameters.
+///
+/// Returns parsed `LogicTree` nodes that express boolean combinations of leaf filters.
+fn parse_logic_filters_from_params(params: &HashMap<String, String>) -> Vec<LogicTree> {
+    let mut trees = Vec::new();
+
+    for (key, value) in params {
+        if !is_logic_filter_key(key) {
+            continue;
+        }
+        match query_params::parse_logic_tree(key, value) {
+            Ok(node) => {
+                // Wrap the top-level LogicNode in a LogicTree
+                match node {
+                    pgvis_core::query_params::LogicNode::Tree(tree) => trees.push(tree),
+                    pgvis_core::query_params::LogicNode::Not(inner) => {
+                        // not.and/not.or: wrap in a single-item And with negation
+                        // The plan layer handles Not nodes within the tree
+                        trees.push(LogicTree::And(vec![pgvis_core::query_params::LogicNode::Not(inner)]));
+                    }
+                    pgvis_core::query_params::LogicNode::Filter(f) => {
+                        trees.push(LogicTree::And(vec![pgvis_core::query_params::LogicNode::Filter(f)]));
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::debug!(key = %key, error = %e, "failed to parse logic filter, skipping");
+            }
+        }
+    }
+
+    trees
 }
 
 /// Parse limit/offset from query parameters into a `RangeSpec`.

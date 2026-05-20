@@ -73,7 +73,12 @@ pub fn plan_request(
 
     match request.method {
         RequestMethod::Get | RequestMethod::Head => {
-            plan_read(request, cache, dialect, &plan_config)
+            if request.is_rpc {
+                // GET /rpc/fn — immutable function call with args from query params
+                plan_call(request, cache, dialect, &plan_config)
+            } else {
+                plan_read(request, cache, dialect, &plan_config)
+            }
         }
         RequestMethod::Post => {
             if request.is_rpc {

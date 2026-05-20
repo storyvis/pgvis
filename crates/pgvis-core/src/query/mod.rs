@@ -22,6 +22,7 @@ use serde_json::Value;
 
 use crate::dialect::Dialect;
 use crate::error::Error;
+use crate::plan::types::CountStrategy;
 use crate::plan::ActionPlan;
 
 pub use cte::wrap_cte;
@@ -143,15 +144,26 @@ pub fn render(plan: &ActionPlan, dialect: &Dialect) -> Result<(String, Vec<Value
     match plan {
         ActionPlan::Read(read_plan) => {
             let inner_sql = read::render_read(read_plan, &mut ctx)?;
-            cte::wrap_cte(&inner_sql, read_plan.count.as_ref(), &mut ctx);
+            // For exact count, generate a separate count source SQL without LIMIT/OFFSET
+            let count_source = if matches!(read_plan.count.as_ref(), Some(CountStrategy::Exact)) {
+                Some(read::render_read_count_source(read_plan, &mut ctx)?)
+            } else {
+                None
+            };
+            cte::wrap_cte(
+                &inner_sql,
+                count_source.as_deref(),
+                read_plan.count.as_ref(),
+                &mut ctx,
+            );
         }
         ActionPlan::Mutate(mutate_plan) => {
             let inner_sql = mutate::render_mutate(mutate_plan, &mut ctx)?;
-            cte::wrap_cte(&inner_sql, mutate_plan.count.as_ref(), &mut ctx);
+            cte::wrap_cte(&inner_sql, None, mutate_plan.count.as_ref(), &mut ctx);
         }
         ActionPlan::Call(call_plan) => {
             let inner_sql = call::render_call(call_plan, &mut ctx)?;
-            cte::wrap_cte(&inner_sql, None, &mut ctx);
+            cte::wrap_cte(&inner_sql, None, None, &mut ctx);
         }
         ActionPlan::Inspect(_) => {
             return Err(Error::Internal(

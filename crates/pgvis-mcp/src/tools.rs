@@ -7,12 +7,14 @@ use pgvis_core::backend::{Backend, ExecContext};
 use pgvis_core::cache::{Routine, Table};
 use pgvis_core::config::RoutingConfig;
 use pgvis_core::plan::{plan_request, ActionPlan, ApiRequest, RequestBody, RequestMethod};
-use pgvis_core::preferences::Preferences;
+use pgvis_core::preferences::{PreferCount, PreferResolution, PreferReturn, Preferences};
 use pgvis_core::query;
+use pgvis_core::query_params;
 use pgvis_core::query_params::types::{
-    Filter, FilterValue, NullsOrder, Operator, OrderDirection, OrderTerm, RangeSpec,
+    Filter, FilterValue, LogicNode, LogicTree, NullsOrder, Operator, OrderDirection, OrderTerm,
+    RangeSpec,
 };
-use pgvis_core::select_ast::{FieldSelect, SelectItem};
+use pgvis_core::select_ast::SelectItem;
 use pgvis_core::{Config, Dialect, SchemaCache};
 
 use crate::types::*;
@@ -233,6 +235,12 @@ pub async fn handle_tool_call(
 
     let is_mutation = matches!(verb, "create" | "update" | "delete");
 
+    // Parse logic filters (MCP-17): support "or" and "and" arguments
+    let logic_filters = parse_mcp_logic_filters(args);
+
+    // Parse preferences (MCP-18 + MCP-20)
+    let preferences = parse_mcp_preferences(args, is_mutation);
+
     let api_request = ApiRequest {
         schema: schema.to_string(),
         target: target.to_string(),
@@ -242,11 +250,11 @@ pub async fn handle_tool_call(
         filters,
         order: parse_mcp_order(args),
         range,
-        preferences: Preferences::default(),
+        preferences,
         body,
         on_conflict,
         columns: None,
-        logic_filters: Vec::new(),
+        logic_filters,
     };
 
     // 4. Plan the request (same pipeline as REST)
@@ -291,10 +299,26 @@ pub async fn handle_tool_call(
     // 7. Execute via backend
     match backend.execute(&exec_ctx, &sql, &params).await {
         Ok(result) => {
-            // Return the query result body as the tool output
-            let body_str = serde_json::to_string_pretty(&result.body)
-                .unwrap_or_else(|_| result.body.to_string());
-            McpToolResult::success_text(body_str)
+            // If count was requested, return structured response with total
+            let count_requested = args
+                .and_then(|a| a.get("count"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            if count_requested {
+                let response = serde_json::json!({
+                    "rows": result.body,
+                    "total": result.total_count,
+                    "page_total": result.page_total,
+                });
+                let body_str = serde_json::to_string_pretty(&response)
+                    .unwrap_or_else(|_| response.to_string());
+                McpToolResult::success_text(body_str)
+            } else {
+                let body_str = serde_json::to_string_pretty(&result.body)
+                    .unwrap_or_else(|_| result.body.to_string());
+                McpToolResult::success_text(body_str)
+            }
         }
         Err(err) => McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
     }
@@ -349,6 +373,27 @@ fn make_list_tool(routing: &RoutingConfig, schema: &str, table: &Table) -> McpTo
             "description": "Rows to skip"
         }),
     );
+    properties.insert(
+        "or".to_string(),
+        serde_json::json!({
+            "type": "string",
+            "description": "OR logic filter using PostgREST syntax: '(col.eq.val1,col.eq.val2)'"
+        }),
+    );
+    properties.insert(
+        "and".to_string(),
+        serde_json::json!({
+            "type": "string",
+            "description": "AND logic filter using PostgREST syntax: '(col.gte.1,col.lte.10)'"
+        }),
+    );
+    properties.insert(
+        "count".to_string(),
+        serde_json::json!({
+            "type": "boolean",
+            "description": "If true, returns total count of matching rows alongside the data"
+        }),
+    );
 
     McpToolDefinition {
         name,
@@ -399,6 +444,16 @@ fn make_create_tool(routing: &RoutingConfig, schema: &str, table: &Table) -> Mcp
                     "type": "string",
                     "description": "Upsert resolution column"
                 },
+                "return": {
+                    "type": "string",
+                    "enum": ["representation", "minimal"],
+                    "description": "Whether to return the affected rows (representation) or nothing (minimal)"
+                },
+                "resolution": {
+                    "type": "string",
+                    "enum": ["merge-duplicates", "ignore-duplicates"],
+                    "description": "Conflict resolution strategy for upsert"
+                },
             },
             "required": ["rows"],
             "description": format!("Columns: {}", column_desc.join(", ")),
@@ -433,6 +488,11 @@ fn make_update_tool(routing: &RoutingConfig, schema: &str, table: &Table) -> Mcp
                     "type": "string",
                     "description": "Columns to return from updated rows"
                 },
+                "return": {
+                    "type": "string",
+                    "enum": ["representation", "minimal"],
+                    "description": "Whether to return the affected rows (representation) or nothing (minimal)"
+                },
             },
             "required": ["values", "filters"],
         }),
@@ -461,6 +521,11 @@ fn make_delete_tool(routing: &RoutingConfig, schema: &str, table: &Table) -> Mcp
                 "select": {
                     "type": "string",
                     "description": "Columns to return from deleted rows"
+                },
+                "return": {
+                    "type": "string",
+                    "enum": ["representation", "minimal"],
+                    "description": "Whether to return the affected rows (representation) or nothing (minimal)"
                 },
             },
             "required": ["filters"],
@@ -635,47 +700,97 @@ fn pg_type_to_json_type(pg_type: &str) -> &'static str {
     }
 }
 
-/// Parse a comma-separated select string into `SelectItem` entries.
+/// Parse a select string using the full PostgREST select DSL parser.
 ///
-/// Supports simple column names and `*`. Embedding syntax (e.g. `posts(title)`)
-/// is not yet handled here — it falls back to treating the whole token as a field name.
+/// Supports the complete grammar: columns, aliases, JSON paths, casts,
+/// aggregates, embeddings with hints/joins, and spreads.
 ///
-/// Examples: `"id,name,email"` → three `SelectItem::Field` items.
-///           `"*"` → `[SelectItem::Star]`.
+/// Falls back to `[SelectItem::Star]` if parsing fails.
 fn parse_mcp_select(s: &str) -> Vec<SelectItem> {
     let trimmed = s.trim();
     if trimmed.is_empty() || trimmed == "*" {
         return vec![SelectItem::Star];
     }
 
-    trimmed
-        .split(',')
-        .map(|part| {
-            let part = part.trim();
-            if part == "*" {
-                SelectItem::Star
-            } else {
-                // Handle alias:column syntax
-                let (alias, name) = if let Some(colon_pos) = part.find(':') {
-                    (
-                        Some(part[..colon_pos].to_string()),
-                        part[colon_pos + 1..].to_string(),
-                    )
-                } else {
-                    (None, part.to_string())
-                };
+    query_params::parse_select(trimmed).unwrap_or_else(|_| vec![SelectItem::Star])
+}
 
-                SelectItem::Field(FieldSelect {
-                    name,
-                    alias,
-                    json_path: Vec::new(),
-                    cast: None,
-                    aggregate: None,
-                    aggregate_cast: None,
-                })
+/// Parse logic filter arguments from MCP tool call into `LogicTree` nodes.
+///
+/// Accepts the PostgREST string syntax in `"or"` and `"and"` arguments:
+/// ```json
+/// { "or": "(status.eq.active,status.eq.pending)" }
+/// { "and": "(age.gte.18,age.lte.65)" }
+/// ```
+fn parse_mcp_logic_filters(args: Option<&serde_json::Map<String, serde_json::Value>>) -> Vec<LogicTree> {
+    let mut trees = Vec::new();
+    let args = match args {
+        Some(a) => a,
+        None => return trees,
+    };
+
+    for key in &["and", "or", "not.and", "not.or"] {
+        if let Some(value) = args.get(*key).and_then(|v| v.as_str()) {
+            match query_params::parse_logic_tree(key, value) {
+                Ok(node) => match node {
+                    LogicNode::Tree(tree) => trees.push(tree),
+                    LogicNode::Not(inner) => {
+                        trees.push(LogicTree::And(vec![LogicNode::Not(inner)]));
+                    }
+                    LogicNode::Filter(f) => {
+                        trees.push(LogicTree::And(vec![LogicNode::Filter(f)]));
+                    }
+                },
+                Err(_) => {} // Silently skip malformed logic filters in MCP
             }
-        })
-        .collect()
+        }
+    }
+
+    trees
+}
+
+/// Parse MCP preferences from tool arguments.
+///
+/// Supports:
+/// - `"count": true` → `Prefer: count=exact` (MCP-18)
+/// - `"return": "representation"|"minimal"` → `Prefer: return=...` (MCP-20)
+/// - `"resolution": "merge-duplicates"|"ignore-duplicates"` → upsert (MCP-20)
+fn parse_mcp_preferences(
+    args: Option<&serde_json::Map<String, serde_json::Value>>,
+    is_mutation: bool,
+) -> Preferences {
+    let mut prefs = Preferences::default();
+    let args = match args {
+        Some(a) => a,
+        None => return prefs,
+    };
+
+    // count=true → exact count
+    if args.get("count").and_then(|v| v.as_bool()).unwrap_or(false) {
+        prefs.count = Some(PreferCount::Exact);
+    }
+
+    // return preference (for mutations)
+    if is_mutation {
+        if let Some(ret) = args.get("return").and_then(|v| v.as_str()) {
+            prefs.return_repr = match ret {
+                "representation" => Some(PreferReturn::Representation),
+                "minimal" => Some(PreferReturn::Minimal),
+                _ => None,
+            };
+        }
+
+        // resolution preference (for create/upsert)
+        if let Some(res) = args.get("resolution").and_then(|v| v.as_str()) {
+            prefs.resolution = match res {
+                "merge-duplicates" => Some(PreferResolution::MergeDuplicates),
+                "ignore-duplicates" => Some(PreferResolution::IgnoreDuplicates),
+                _ => None,
+            };
+        }
+    }
+
+    prefs
 }
 
 /// Parse the `order` argument string into `OrderTerm` entries.

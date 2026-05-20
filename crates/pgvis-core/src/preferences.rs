@@ -123,10 +123,11 @@ pub enum PreferTx {
 }
 
 /// `Prefer: params` values for RPC.
+///
+/// Note: `single-object` was removed in PostgREST v13 and is no longer supported.
+/// If received, it is treated as an unknown preference (triggers 400 with `handling=strict`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreferParams {
-    /// Pass the entire JSON body as a single argument.
-    SingleObject,
     /// Pass body as multiple named arguments (default).
     MultipleObjects,
 }
@@ -229,8 +230,8 @@ impl Preferences {
                     }
                     "params" => {
                         prefs.params = match value {
-                            "single-object" => Some(PreferParams::SingleObject),
                             "multiple-objects" => Some(PreferParams::MultipleObjects),
+                            // "single-object" was removed in PostgREST v13
                             _ => {
                                 unknown.push(part.to_string());
                                 None
@@ -322,7 +323,6 @@ impl Preferences {
             parts.push(format!(
                 "params={}",
                 match p {
-                    PreferParams::SingleObject => "single-object",
                     PreferParams::MultipleObjects => "multiple-objects",
                 }
             ));

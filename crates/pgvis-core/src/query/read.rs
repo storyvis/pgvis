@@ -84,6 +84,44 @@ pub fn render_read(plan: &ReadPlan, ctx: &mut RenderContext<'_>) -> Result<Strin
     Ok(sql)
 }
 
+/// Render the count source query for exact count — same as `render_read` but
+/// without LIMIT/OFFSET and without embeds (we only need the WHERE clause to count).
+///
+/// This produces the SQL that goes into the `pgrst_count` CTE to count all
+/// matching rows regardless of pagination.
+pub fn render_read_count_source(plan: &ReadPlan, ctx: &mut RenderContext<'_>) -> Result<String, Error> {
+    let table_ref = ctx.qualified_table(&plan.target.schema, &plan.target.name);
+    let table_alias = &plan.target.name;
+
+    // Use simple star select — we only need to count rows
+    let select_clause = format!("{}.*", ctx.quote_ident(table_alias));
+
+    // --- FROM ---
+    let from_clause = format!("{table_ref} AS {}", ctx.quote_ident(table_alias));
+
+    // --- WHERE --- (same filters as the paginated query)
+    let where_clause =
+        fragment::render_where_clause(&plan.filters, &plan.logic_filters, Some(table_alias), ctx);
+
+    // --- GROUP BY --- (needed for correct count when aggregates are used)
+    let group_by = fragment::render_group_by(&plan.select, Some(table_alias), ctx);
+
+    // --- Assemble (no ORDER BY, no LIMIT/OFFSET) ---
+    let mut sql = format!("SELECT {select_clause} FROM {from_clause}");
+
+    if let Some(wc) = where_clause {
+        sql.push_str(" WHERE ");
+        sql.push_str(&wc);
+    }
+
+    if let Some(gb) = group_by {
+        sql.push_str(" GROUP BY ");
+        sql.push_str(&gb);
+    }
+
+    Ok(sql)
+}
+
 // ---------------------------------------------------------------------------
 // Embedding subqueries
 // ---------------------------------------------------------------------------
