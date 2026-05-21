@@ -1,40 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="pgvis — Turn any Postgres database into MCP tools, a REST API and OpenAPI, from one Rust engine.">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#08081a" />
-      <stop offset="1" stop-color="#1a1a36" />
+    <linearGradient id="p" x1="14" y1="12" x2="28" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c79f1" />
+      <stop offset="1" stop-color="#4f46e5" />
     </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#818cf8" />
-      <stop offset="0.5" stop-color="#a78bfa" />
-      <stop offset="1" stop-color="#c084fc" />
-    </linearGradient>
-    <linearGradient id="logo" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6366f1" />
-      <stop offset="1" stop-color="#8b5cf6" />
-    </linearGradient>
-    <radialGradient id="glow" cx="600" cy="100" r="400" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#6366f1" stop-opacity="0.25" />
-      <stop offset="1" stop-color="#6366f1" stop-opacity="0" />
+    <radialGradient id="glow-violet" cx="1260" cy="60" r="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.18" />
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glow-cyan" cx="50" cy="580" r="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.14" />
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0" />
     </radialGradient>
   </defs>
-  <rect width="1200" height="630" fill="url(#bg)" />
-  <rect width="1200" height="630" fill="url(#glow)" />
-  <g transform="translate(96, 96)">
-    <rect width="80" height="80" rx="18" fill="url(#logo)" />
-    <path d="M20 28h40M20 40h40M20 52h25" stroke="white" stroke-width="5" stroke-linecap="round" />
+
+  <!-- Background + corner glows -->
+  <rect width="1200" height="630" fill="#f5f2eb" />
+  <rect width="1200" height="630" fill="url(#glow-violet)" />
+  <rect width="1200" height="630" fill="url(#glow-cyan)" />
+
+  <!-- Lockup: Prism mark + Geist 'pgvis' wordmark (inlined from lockup-brand.svg, scaled 2.95×) -->
+  <g transform="translate(84 113) scale(2.95)">
+    <g transform="translate(0 5)">
+      <line x1="3" y1="24" x2="14" y2="24" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
+      <path d="M 14 12 L 28 24 L 14 36 Z" fill="url(#p)" />
+      <line x1="28" y1="24" x2="44" y2="14" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" />
+      <line x1="28" y1="24" x2="45" y2="24" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" />
+      <line x1="28" y1="24" x2="44" y2="34" stroke="#f472b6" stroke-width="2" stroke-linecap="round" />
+    </g>
+    <text
+      x="52" y="41"
+      font-family="Geist, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+      font-weight="700"
+      font-size="42"
+      letter-spacing="-1.26"
+    ><tspan fill="#0b0b14">pg</tspan><tspan fill="#4f46e5">vis</tspan></text>
   </g>
-  <text x="200" y="158" font-family="Inter, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#f8fafc" letter-spacing="-1">pgvis</text>
-  <text x="96" y="290" font-family="Inter, -apple-system, sans-serif" font-size="68" font-weight="800" fill="#f8fafc" letter-spacing="-2">Turn Postgres into</text>
-  <text x="96" y="368" font-family="Inter, -apple-system, sans-serif" font-size="68" font-weight="800" fill="url(#accent)" letter-spacing="-2">MCP, REST &amp; OpenAPI</text>
-  <text x="96" y="430" font-family="Inter, -apple-system, sans-serif" font-size="32" font-weight="500" fill="#94a3b8">— from one I/O-free Rust engine</text>
-  <g transform="translate(96, 500)">
-    <rect x="0" y="0" width="180" height="56" rx="10" fill="rgba(99,102,241,0.12)" stroke="rgba(99,102,241,0.4)" />
-    <text x="90" y="36" font-family="JetBrains Mono, monospace" font-size="20" font-weight="600" fill="#a5b4fc" text-anchor="middle">MCP</text>
-    <rect x="200" y="0" width="180" height="56" rx="10" fill="rgba(139,92,246,0.12)" stroke="rgba(139,92,246,0.4)" />
-    <text x="290" y="36" font-family="JetBrains Mono, monospace" font-size="20" font-weight="600" fill="#c4b5fd" text-anchor="middle">REST</text>
-    <rect x="400" y="0" width="220" height="56" rx="10" fill="rgba(16,185,129,0.1)" stroke="rgba(16,185,129,0.4)" />
-    <text x="510" y="36" font-family="JetBrains Mono, monospace" font-size="20" font-weight="600" fill="#6ee7b7" text-anchor="middle">OpenAPI 3.0</text>
-  </g>
-  <text x="1104" y="586" font-family="JetBrains Mono, monospace" font-size="18" font-weight="500" fill="#64748b" text-anchor="end">github.com/storyvis/pgvis · Apache-2.0 OR MIT</text>
+
+  <!-- Headline -->
+  <text
+    font-family="Geist, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-weight="600"
+    font-size="56"
+    letter-spacing="-1.12"
+    fill="#0b0b14"
+  >
+    <tspan x="84" y="334">Turn any Postgres database into</tspan>
+    <tspan x="84" dy="67"><tspan fill="#4f46e5">MCP tools</tspan>, a <tspan fill="#8b5cf6">REST API</tspan> &amp; <tspan fill="#7c3aed">OpenAPI</tspan></tspan>
+    <tspan x="84" dy="67">— from one Rust engine.</tspan>
+  </text>
+
+  <!-- URL -->
+  <text
+    x="84" y="537"
+    font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+    font-weight="500"
+    font-size="24"
+    letter-spacing="0.96"
+    fill="#64748b"
+  >pgvis.io</text>
 </svg>

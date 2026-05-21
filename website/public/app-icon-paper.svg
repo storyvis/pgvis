@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="pgvis app icon, paper">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="96" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fdfaf3" />
+      <stop offset="1" stop-color="#f0eada" />
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="22" fill="url(#bg)" />
+  <g transform="translate(20 20) scale(1.16)">
+    <line x1="3" y1="24" x2="14" y2="24" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round" opacity="0.7" />
+    <path d="M 14 12 L 28 24 L 14 36 Z" fill="#1a1a2e" />
+    <line x1="28" y1="24" x2="44" y2="14" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="28" y1="24" x2="45" y2="24" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="28" y1="24" x2="44" y2="34" stroke="#db2777" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+</svg>
