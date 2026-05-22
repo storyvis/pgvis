@@ -69,6 +69,8 @@ pgvis --dsn <DSN> [--config <FILE>] <COMMAND>
               --schema <NAME>   repeatable / comma-sep  (env PGVIS_SCHEMAS)
               --mcp-http        also serve MCP at /mcp
   mcp       Run an MCP server over stdio (for Claude Desktop / agents)
+              --schema <NAME>   repeatable / comma-sep  (env PGVIS_SCHEMAS)
+              --read-only       expose only read tools (no create/update/delete/RPC)
   openapi   Print the OpenAPI 3.0 document and exit
   inspect   Dump the introspected schema cache as JSON
 
@@ -83,9 +85,18 @@ env: PGVIS_DSN (required), PGVIS_CONFIG
 # stdio transport, e.g. for a Claude Desktop MCP server entry
 pgvis --dsn "postgres://user@localhost/mydb" mcp
 
+# read-only: catalogue contains only list_/select tools, mutations are rejected
+pgvis --dsn "postgres://user@localhost/mydb" mcp --read-only
+
 # or expose MCP over Streamable HTTP at /mcp alongside the REST API
 pgvis --dsn "postgres://user@localhost/mydb" serve --mcp-http
 ```
+
+The stdio MCP server logs to **stderr** (stdout carries the JSON-RPC stream),
+shuts down cleanly on SIGINT/SIGTERM, treats client-side broken pipe as a
+clean exit, bounds every tool call by `statement_timeout_ms`, and returns
+errors as a structured JSON object (`code`/`message`/`details`/`hint`)
+matching the REST surface's PostgREST-compatible shape.
 
 Tools are generated per table/function — `list_<table>`, `create_<table>`,
 `update_<table>`, `delete_<table>`, `call_<function>` — and discovery
@@ -227,8 +238,8 @@ The authoritative architecture reference lives in **[arch/](arch/README.md)**:
 
 | Milestone | Scope |
 |---|---|
-| **0.1** *(current)* | REST + OpenAPI on Postgres; MCP tools wired; Postgres execution implemented |
-| 0.2 | MCP over stdio hardened |
+| 0.1 | REST + OpenAPI on Postgres; MCP tools wired; Postgres execution implemented |
+| **0.2** *(current)* | MCP over stdio hardened: stderr logging, graceful shutdown, EPIPE-tolerant, per-call deadline, structured PGRST errors, `--read-only` mode, `--schema`/env-overridable CLI |
 | 0.3 | SQLite backend |
 | 0.4 | MCP over SSE |
 | 1.0 | Stable embed API |

@@ -41,7 +41,19 @@ enum Cmd {
     },
     /// Run MCP server over stdio (for Claude Desktop / agent integrations).
     #[cfg(feature = "mcp")]
-    Mcp,
+    Mcp {
+        /// Which database schemas to expose. Defaults to "public" (or "main"
+        /// for SQLite). Overrides any `schemas` value from the config file or
+        /// `PGVIS_SCHEMAS`.
+        #[arg(short, long, env = "PGVIS_SCHEMAS", value_delimiter = ',')]
+        schema: Vec<String>,
+
+        /// Expose only read tools (no create/update/delete/RPC). Suitable for
+        /// LLMs that should browse but not mutate. Equivalent to setting
+        /// `read_only = true` in the config.
+        #[arg(long, default_value = "false")]
+        read_only: bool,
+    },
     /// Print the OpenAPI 3.0 document and exit.
     Openapi,
     /// Dump the introspected schema cache as JSON.
@@ -50,12 +62,17 @@ enum Cmd {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize tracing
+    // Initialize tracing. We always write to stderr — the `mcp` subcommand
+    // uses stdout for the JSON-RPC protocol stream, and `openapi`/`inspect`
+    // print their JSON output to stdout. Logs on stdout would corrupt any of
+    // those. stderr is the right channel in every case; for `serve` it's
+    // equally fine because HTTP responses go over the network, not stdout.
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "pgvis=info,tower_http=info".into()),
         )
+        .with_writer(std::io::stderr)
         .json()
         .init();
 
@@ -90,8 +107,21 @@ async fn main() -> anyhow::Result<()> {
         }
 
         #[cfg(feature = "mcp")]
-        Cmd::Mcp => {
-            tracing::info!(dsn = %cli.dsn, "starting pgvis MCP server (stdio)");
+        Cmd::Mcp { schema, read_only } => {
+            // CLI flags override anything coming from the config layer.
+            if !schema.is_empty() {
+                config.schemas = schema;
+            }
+            if read_only {
+                config.read_only = true;
+            }
+
+            tracing::info!(
+                dsn = %cli.dsn,
+                schemas = ?config.schemas,
+                read_only = config.read_only,
+                "starting pgvis MCP server (stdio)",
+            );
 
             let mcp_server = pgvis_lib::Builder::new(&cli.dsn)
                 .config(config)

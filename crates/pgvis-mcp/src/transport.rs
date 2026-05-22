@@ -49,18 +49,83 @@ use crate::McpServer;
 
 /// Start the MCP server over stdio (stdin/stdout).
 ///
-/// This blocks the current task until the transport closes (client disconnects
-/// or EOF on stdin). Typically called from `pgvis mcp` CLI subcommand.
+/// Blocks until the transport closes (client disconnects, EOF on stdin, broken
+/// pipe on stdout), or a shutdown signal arrives (SIGINT / Ctrl-C, and on Unix
+/// also SIGTERM). On signal, the rmcp service is gracefully cancelled so any
+/// in-flight tool call has a chance to finish writing its response before the
+/// process exits.
+///
+/// Typically called from the `pgvis mcp` CLI subcommand.
 ///
 /// # Errors
 ///
-/// Returns an error if the MCP initialization handshake fails or the transport
-/// encounters an I/O error.
+/// Returns an error if the MCP initialization handshake fails. Transport-level
+/// I/O errors (including broken-pipe when the client dies mid-response) are
+/// treated as a clean shutdown — they are how stdio MCP normally terminates.
 pub async fn serve_stdio(server: McpServer) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let transport = rmcp::transport::io::stdio();
-    let service = rmcp::serve_server(server, transport).await?;
-    service.waiting().await?;
+
+    // Race the initialize handshake against a shutdown signal. Without this,
+    // a SIGINT/SIGTERM arriving before the client sends `initialize` (e.g.
+    // because the user pressed Ctrl-C right after launch) would hit the
+    // process's default signal disposition — which kills it abruptly — since
+    // no tokio signal handler is installed until we call shutdown_signal.
+    let service = tokio::select! {
+        served = rmcp::serve_server(server, transport) => served?,
+        reason = shutdown_signal() => {
+            tracing::info!(reason = %reason, "MCP stdio server shut down before initialize");
+            return Ok(());
+        }
+    };
+
+    // Wire a signal listener to the service's cancellation token. When a
+    // signal arrives, the rmcp event loop observes the token, finishes the
+    // current message, then drops out cleanly — at which point `waiting()`
+    // returns Ok(QuitReason::Cancelled).
+    let cancel = service.cancellation_token();
+    let shutdown_task = tokio::spawn(async move {
+        let reason = shutdown_signal().await;
+        tracing::info!(reason = %reason, "shutting down MCP stdio server");
+        cancel.cancel();
+    });
+
+    let quit_reason = service.waiting().await?;
+    tracing::info!(?quit_reason, "MCP stdio server stopped");
+
+    // The signal task may still be parked on an as-yet-unfired signal; abort
+    // it so the runtime can drop cleanly.
+    shutdown_task.abort();
+
     Ok(())
+}
+
+/// Resolve when the process should shut down: SIGINT (Ctrl-C) on all platforms,
+/// or SIGTERM on Unix. Returns the name of the signal that fired so the caller
+/// can log it.
+async fn shutdown_signal() -> &'static str {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+        "SIGINT"
+    };
+
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        // If we can't install SIGTERM, just wait on Ctrl-C — better than
+        // failing to start the server.
+        let Ok(mut term) = signal(SignalKind::terminate()) else {
+            return ctrl_c.await;
+        };
+        tokio::select! {
+            name = ctrl_c => name,
+            _ = term.recv() => "SIGTERM",
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        ctrl_c.await
+    }
 }
 
 /// Create a tower `Service` that serves MCP over the Streamable HTTP transport.
