@@ -24,11 +24,13 @@ pub mod execute;
 pub mod introspect;
 pub(crate) mod util;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use futures::future::BoxFuture;
-use pgvis_core::backend::{Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream};
+use pgvis_core::backend::{
+    Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream,
+};
 use pgvis_core::cache::SchemaCache;
 use pgvis_core::dialect::{self, Dialect};
 use pgvis_core::error::Error;
@@ -110,11 +112,9 @@ impl SqliteBackend {
         // Open reader connections
         let mut readers = Vec::with_capacity(reader_count);
         for i in 0..reader_count {
-            let reader = Connection::open(&effective_path)
-                .await
-                .map_err(|e| {
-                    Error::Introspection(format!("failed to open SQLite reader {i}: {e}"))
-                })?;
+            let reader = Connection::open(&effective_path).await.map_err(|e| {
+                Error::Introspection(format!("failed to open SQLite reader {i}: {e}"))
+            })?;
 
             reader
                 .call(|conn| {
@@ -122,9 +122,7 @@ impl SqliteBackend {
                     Ok(())
                 })
                 .await
-                .map_err(|e| {
-                    Error::Introspection(format!("failed to init reader {i}: {e}"))
-                })?;
+                .map_err(|e| Error::Introspection(format!("failed to init reader {i}: {e}")))?;
 
             readers.push(reader);
         }

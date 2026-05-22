@@ -34,11 +34,7 @@ pub fn quoted_value(input: &mut &str) -> Result<String> {
 }
 
 fn quoted_char(input: &mut &str) -> Result<char> {
-    alt((
-        preceded('\\', any),
-        one_of(|c: char| c != '\\' && c != '"'),
-    ))
-    .parse_next(input)
+    alt((preceded('\\', any), one_of(|c: char| c != '\\' && c != '"'))).parse_next(input)
 }
 
 /// Parse an identifier: letters / digits / `_` / `$` / spaces (trimmed).

@@ -3,8 +3,8 @@
 use pgvis_core::cache::{Cardinality, QualifiedIdentifier, Relationship};
 use pgvis_core::error::Error;
 use serde::Deserialize;
-use tokio_postgres::types::Type;
 use tokio_postgres::Client;
+use tokio_postgres::types::Type;
 
 /// SQL query for relationships introspection (loaded at compile time).
 const RELATIONSHIPS_SQL: &str = include_str!("../sql/relationships.sql");
@@ -46,8 +46,11 @@ pub async fn query_relationships(
 
         // Decode column pairs from JSON
         let columns_json: serde_json::Value = row.get("columns");
-        let col_pairs: Vec<ColumnPair> = serde_json::from_value(columns_json)
-            .map_err(|e| Error::Introspection(format!("failed to decode relationship columns for {constraint_name}: {e}")))?;
+        let col_pairs: Vec<ColumnPair> = serde_json::from_value(columns_json).map_err(|e| {
+            Error::Introspection(format!(
+                "failed to decode relationship columns for {constraint_name}: {e}"
+            ))
+        })?;
 
         let source_columns: Vec<String> = col_pairs.iter().map(|p| p.source.clone()).collect();
         let target_columns: Vec<String> = col_pairs.iter().map(|p| p.target.clone()).collect();

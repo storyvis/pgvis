@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{setup_test_db, test_dsn, PgvisServer};
+use common::{PgvisServer, setup_test_db, test_dsn};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::sync::OnceLock;
@@ -59,11 +59,7 @@ async fn rpc_post(fn_name: &str, body: serde_json::Value) -> reqwest::Response {
 }
 
 /// POST to RPC with Prefer header.
-async fn rpc_post_prefer(
-    fn_name: &str,
-    body: serde_json::Value,
-    pref: &str,
-) -> reqwest::Response {
+async fn rpc_post_prefer(fn_name: &str, body: serde_json::Value, pref: &str) -> reqwest::Response {
     let s = server_info();
     s.client
         .post(format!("{}/api/test/rpc/{fn_name}", s.base_url))
@@ -206,8 +202,14 @@ async fn test_rpc_get_items_returns_set() {
         "got {status}"
     );
     let body: serde_json::Value = resp.json().await.unwrap();
-    let arr = body.as_array().expect("set-returning function should return array");
-    assert!(arr.len() >= 10, "should return at least 10 items, got {}", arr.len());
+    let arr = body
+        .as_array()
+        .expect("set-returning function should return array");
+    assert!(
+        arr.len() >= 10,
+        "should return at least 10 items, got {}",
+        arr.len()
+    );
     // Each item should have typical columns
     assert!(arr[0].get("id").is_some());
     assert!(arr[0].get("name").is_some());
@@ -275,7 +277,9 @@ async fn test_rpc_void_function() {
     let resp = rpc_post("void_function", json!({})).await;
     let status = resp.status();
     assert!(
-        status == StatusCode::OK || status == StatusCode::CREATED || status == StatusCode::NO_CONTENT,
+        status == StatusCode::OK
+            || status == StatusCode::CREATED
+            || status == StatusCode::NO_CONTENT,
         "got {status}"
     );
 }
@@ -344,7 +348,10 @@ async fn test_rpc_wrong_param_name() {
     let status = resp.status();
     // Should either fail or use defaults (which may error for non-default params)
     assert!(
-        status.is_client_error() || status.is_server_error() || status == StatusCode::OK || status == StatusCode::CREATED,
+        status.is_client_error()
+            || status.is_server_error()
+            || status == StatusCode::OK
+            || status == StatusCode::CREATED,
         "got {status}"
     );
 }

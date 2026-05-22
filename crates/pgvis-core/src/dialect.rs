@@ -88,7 +88,6 @@ impl Placeholder {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dialect {
     // --- Syntax -----------------------------------------------------------
-
     /// Character used to quote identifiers (table/column names).
     ///
     /// Both Postgres and SQLite use `"` (double-quote), but this is explicit
@@ -99,7 +98,6 @@ pub struct Dialect {
     pub placeholder: Placeholder,
 
     // --- JSON aggregation functions ----------------------------------------
-
     /// Function name for aggregating rows into a JSON array.
     ///
     /// - Postgres: `"json_agg"` — `json_agg(row_to_json(_t))`
@@ -113,7 +111,6 @@ pub struct Dialect {
     pub json_object: &'static str,
 
     // --- Feature gates: DDL/Transaction capabilities -----------------------
-
     /// Whether `INSERT/UPDATE/DELETE ... RETURNING *` is supported.
     ///
     /// - Postgres: always true
@@ -151,7 +148,6 @@ pub struct Dialect {
     pub schema_namespacing: bool,
 
     // --- Feature gates: Query capabilities ---------------------------------
-
     /// Whether stored functions/procedures are available (`/rpc/*` routes).
     ///
     /// When false, no `/rpc/*` routes are registered, no `call_<fn>` MCP tools
@@ -292,9 +288,9 @@ pub static SQLITE: Dialect = Dialect {
     schema_namespacing: false,
     has_routines: false,
     supports_aggregates: true,
-    supports_ilike: false,    // must rewrite via LOWER()
+    supports_ilike: false,       // must rewrite via LOWER()
     supports_regex_match: false, // requires REGEXP extension
-    supports_fts: true,       // FTS5 virtual tables
+    supports_fts: true,          // FTS5 virtual tables
     supports_array_ops: false,
     supports_range_ops: false,
     supports_estimated_count: false,

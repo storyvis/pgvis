@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{setup_test_db, test_dsn, PgvisServer};
+use common::{PgvisServer, setup_test_db, test_dsn};
 use reqwest::StatusCode;
 use std::sync::OnceLock;
 
@@ -74,10 +74,7 @@ async fn test_embed_many_to_one() {
     for order in arr {
         let user = &order["users"];
         if !user.is_null() {
-            assert!(
-                user.is_object(),
-                "M2O embed should be object, got: {user}"
-            );
+            assert!(user.is_object(), "M2O embed should be object, got: {user}");
             assert!(user.get("id").is_some());
             assert!(user.get("name").is_some());
         }
@@ -169,8 +166,7 @@ async fn test_embed_many_to_many() {
 #[tokio::test]
 async fn test_embed_nested() {
     // projects → tasks → assigned user
-    let resp =
-        get("/api/test/projects?select=name,tasks(title,done,users(name))").await;
+    let resp = get("/api/test/projects?select=name,tasks(title,done,users(name))").await;
     let status = resp.status();
     assert!(
         status == StatusCode::OK,
@@ -273,6 +269,9 @@ async fn test_embed_with_ordering() {
     if arr.len() >= 2 {
         let first = arr[0]["name"].as_str().unwrap_or("");
         let second = arr[1]["name"].as_str().unwrap_or("");
-        assert!(first <= second, "should be ordered: '{first}' <= '{second}'");
+        assert!(
+            first <= second,
+            "should be ordered: '{first}' <= '{second}'"
+        );
     }
 }

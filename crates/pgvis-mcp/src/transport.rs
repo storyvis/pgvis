@@ -42,7 +42,7 @@
 use std::sync::Arc;
 
 use rmcp::transport::streamable_http_server::{
-    session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
+    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
 
 use crate::McpServer;
@@ -56,7 +56,9 @@ use crate::McpServer;
 ///
 /// Returns an error if the MCP initialization handshake fails or the transport
 /// encounters an I/O error.
-pub async fn serve_stdio(server: McpServer) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn serve_stdio(
+    server: McpServer,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let transport = rmcp::transport::io::stdio();
     let service = rmcp::serve_server(server, transport).await?;
     service.waiting().await?;
@@ -97,9 +99,5 @@ pub fn streamable_http_service(
     let config = StreamableHttpServerConfig::default();
     let session_manager = Arc::new(LocalSessionManager::default());
 
-    StreamableHttpService::new(
-        move || Ok(server.clone()),
-        session_manager,
-        config,
-    )
+    StreamableHttpService::new(move || Ok(server.clone()), session_manager, config)
 }

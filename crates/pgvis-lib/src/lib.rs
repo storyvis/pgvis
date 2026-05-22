@@ -87,10 +87,10 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
+use pgvis_core::Config;
 use pgvis_core::backend::{Backend, IntrospectConfig};
 use pgvis_core::cache::SchemaCache;
 use pgvis_core::dialect::Dialect;
-use pgvis_core::Config;
 
 // Re-export key types for convenience
 pub use pgvis_core;
@@ -154,10 +154,7 @@ pub fn detect_db_kind(dsn: &str) -> DbKind {
     let lower = dsn.to_lowercase();
     if lower.starts_with("postgres://") || lower.starts_with("postgresql://") {
         DbKind::Postgres
-    } else if lower.starts_with("sqlite:")
-        || lower.starts_with("file:")
-        || dsn == ":memory:"
-    {
+    } else if lower.starts_with("sqlite:") || lower.starts_with("file:") || dsn == ":memory:" {
         DbKind::Sqlite
     } else if lower.ends_with(".db") || lower.ends_with(".sqlite") || lower.ends_with(".sqlite3") {
         DbKind::Sqlite
@@ -251,13 +248,22 @@ impl Builder {
         let dialect = Arc::new(backend.dialect().clone());
 
         // Build REST router
-        let mut app =
-            pgvis_router::build_app(cache.clone(), config.clone(), dialect.clone(), backend.clone());
+        let mut app = pgvis_router::build_app(
+            cache.clone(),
+            config.clone(),
+            dialect.clone(),
+            backend.clone(),
+        );
 
         // Optionally merge MCP Streamable HTTP service
         #[cfg(feature = "mcp")]
         if self.mcp_http {
-            let mcp_server = pgvis_mcp::McpServer::new(cache.clone(), config.clone(), dialect.clone(), backend.clone());
+            let mcp_server = pgvis_mcp::McpServer::new(
+                cache.clone(),
+                config.clone(),
+                dialect.clone(),
+                backend.clone(),
+            );
             let mcp_service = pgvis_mcp::streamable_http_service(mcp_server);
             app = app.route_service("/mcp", mcp_service);
         }
@@ -373,9 +379,18 @@ mod tests {
 
     #[test]
     fn test_detect_postgres() {
-        assert_eq!(detect_db_kind("postgres://localhost/mydb"), DbKind::Postgres);
-        assert_eq!(detect_db_kind("postgresql://localhost/mydb"), DbKind::Postgres);
-        assert_eq!(detect_db_kind("POSTGRES://localhost/mydb"), DbKind::Postgres);
+        assert_eq!(
+            detect_db_kind("postgres://localhost/mydb"),
+            DbKind::Postgres
+        );
+        assert_eq!(
+            detect_db_kind("postgresql://localhost/mydb"),
+            DbKind::Postgres
+        );
+        assert_eq!(
+            detect_db_kind("POSTGRES://localhost/mydb"),
+            DbKind::Postgres
+        );
     }
 
     #[test]
@@ -387,13 +402,19 @@ mod tests {
         assert_eq!(detect_db_kind("/path/to/file.db"), DbKind::Sqlite);
         assert_eq!(detect_db_kind("data.sqlite"), DbKind::Sqlite);
         // file: URI format (SQLite shared-cache, etc.)
-        assert_eq!(detect_db_kind("file:mydb?mode=memory&cache=shared"), DbKind::Sqlite);
+        assert_eq!(
+            detect_db_kind("file:mydb?mode=memory&cache=shared"),
+            DbKind::Sqlite
+        );
         assert_eq!(detect_db_kind("file:/path/to/db.sqlite3"), DbKind::Sqlite);
     }
 
     #[test]
     fn test_detect_default_postgres() {
         // Unknown formats default to Postgres for backward compatibility
-        assert_eq!(detect_db_kind("host=localhost dbname=mydb"), DbKind::Postgres);
+        assert_eq!(
+            detect_db_kind("host=localhost dbname=mydb"),
+            DbKind::Postgres
+        );
     }
 }

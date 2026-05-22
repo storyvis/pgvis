@@ -60,9 +60,7 @@ mod tests {
     use super::*;
     use crate::cache::{QualifiedIdentifier, Volatility};
     use crate::dialect::POSTGRES;
-    use crate::plan::types::{
-        CallPlan, ResolvedFunctionInfo, ResolvedParam, ResolvedSelect,
-    };
+    use crate::plan::types::{CallPlan, ResolvedFunctionInfo, ResolvedParam, ResolvedSelect};
     use crate::preferences::Preferences;
 
     #[test]
@@ -76,14 +74,12 @@ mod tests {
                 returns_table: true,
                 isolation_level: None,
             },
-            params: vec![
-                ResolvedParam {
-                    name: "min_age".to_string(),
-                    param_type: "integer".to_string(),
-                    has_value: true,
-                    is_variadic: false,
-                },
-            ],
+            params: vec![ResolvedParam {
+                name: "min_age".to_string(),
+                param_type: "integer".to_string(),
+                has_value: true,
+                is_variadic: false,
+            }],
             returning: vec![ResolvedSelect::Star],
             is_singular: false,
             preferences: Preferences::default(),

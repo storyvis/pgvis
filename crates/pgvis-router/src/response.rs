@@ -100,9 +100,7 @@ pub fn format_response(
     let body = if is_singular {
         // Singular: unwrap first element from array
         match &result.body {
-            Value::Array(arr) if arr.len() == 1 => {
-                serde_json::to_vec(&arr[0]).unwrap_or_default()
-            }
+            Value::Array(arr) if arr.len() == 1 => serde_json::to_vec(&arr[0]).unwrap_or_default(),
             Value::Array(arr) if arr.is_empty() => {
                 // 406 Not Acceptable for singular with no rows
                 status = StatusCode::NOT_ACCEPTABLE;
@@ -179,7 +177,8 @@ fn build_content_range(result: &QueryResult, request_offset: Option<u64>) -> Str
 /// }
 /// ```
 pub fn format_error(err: &pgvis_core::error::Error) -> Response {
-    let status = StatusCode::from_u16(err.http_status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    let status =
+        StatusCode::from_u16(err.http_status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
 
     let body = match err {
         pgvis_core::error::Error::Execution {
@@ -218,5 +217,10 @@ pub fn format_error(err: &pgvis_core::error::Error) -> Response {
         HeaderValue::from_static("application/json; charset=utf-8"),
     );
 
-    (status, headers, serde_json::to_vec(&body).unwrap_or_default()).into_response()
+    (
+        status,
+        headers,
+        serde_json::to_vec(&body).unwrap_or_default(),
+    )
+        .into_response()
 }

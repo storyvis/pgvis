@@ -89,10 +89,7 @@ fn op_expr(
 ///
 /// Distinctive shapes (IN, IS, ISDISTINCT, FTS-family) come first so we don't
 /// mis-parse `isdistinct` as `is` or `phfts` as `fts`.
-fn op_body(
-    ctx: ValueCtx,
-    input: &mut &str,
-) -> Result<(Operator, Option<Quantifier>, FilterValue)> {
+fn op_body(ctx: ValueCtx, input: &mut &str) -> Result<(Operator, Option<Quantifier>, FilterValue)> {
     if input.starts_with("in.") {
         "in".parse_next(input)?;
         dot.parse_next(input)?;

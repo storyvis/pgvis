@@ -11,8 +11,8 @@ use crate::cache::Cardinality;
 use crate::error::Error;
 use crate::plan::types::{EmbeddedResource, ReadPlan, ResolvedJoin};
 
-use super::fragment;
 use super::RenderContext;
+use super::fragment;
 
 /// Render a [`ReadPlan`] into the inner SELECT SQL (without CTE wrapper).
 ///
@@ -89,7 +89,10 @@ pub fn render_read(plan: &ReadPlan, ctx: &mut RenderContext<'_>) -> Result<Strin
 ///
 /// This produces the SQL that goes into the `pgrst_count` CTE to count all
 /// matching rows regardless of pagination.
-pub fn render_read_count_source(plan: &ReadPlan, ctx: &mut RenderContext<'_>) -> Result<String, Error> {
+pub fn render_read_count_source(
+    plan: &ReadPlan,
+    ctx: &mut RenderContext<'_>,
+) -> Result<String, Error> {
     let table_ref = ctx.qualified_table(&plan.target.schema, &plan.target.name);
     let table_alias = &plan.target.name;
 
@@ -152,8 +155,12 @@ fn render_embed(
     let join_condition = render_join_condition(&embed.join, parent_alias, child_alias, ctx);
 
     // Build inner query with child's own filters
-    let child_where =
-        fragment::render_where_clause(&child_plan.filters, &child_plan.logic_filters, Some(child_alias), ctx);
+    let child_where = fragment::render_where_clause(
+        &child_plan.filters,
+        &child_plan.logic_filters,
+        Some(child_alias),
+        ctx,
+    );
 
     let mut inner_sql = format!(
         "SELECT {child_select} FROM {child_table_ref} AS {}",
@@ -207,7 +214,8 @@ fn render_embed(
     }
 
     // LIMIT for child
-    if let Some(lo) = fragment::render_limit_offset(child_plan.range.limit, child_plan.range.offset) {
+    if let Some(lo) = fragment::render_limit_offset(child_plan.range.limit, child_plan.range.offset)
+    {
         inner_sql.push(' ');
         inner_sql.push_str(&lo);
     }
@@ -216,10 +224,7 @@ fn render_embed(
     let is_to_one = is_to_one_relationship(&embed.join);
 
     // Wrap in json aggregation — dialect-aware
-    let output_alias = embed
-        .alias
-        .as_deref()
-        .unwrap_or(&embed.name);
+    let output_alias = embed.alias.as_deref().unwrap_or(&embed.name);
 
     let embed_expr = if ctx.dialect.supports_row_to_json {
         // Postgres path: use row_to_json / json_agg on subquery alias

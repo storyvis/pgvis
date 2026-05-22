@@ -135,9 +135,7 @@ pub fn infer_m2m_relationships(cache: &mut SchemaCache) {
                         junction_cols_source: rel1.source_columns.clone(),
                         junction_cols_target: rel2.source_columns.clone(),
                     },
-                    constraint_name: format!(
-                        "{}_{}", rel1.constraint_name, rel2.constraint_name
-                    ),
+                    constraint_name: format!("{}_{}", rel1.constraint_name, rel2.constraint_name),
                     is_self,
                 });
             }

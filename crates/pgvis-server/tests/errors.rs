@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{setup_test_db, test_dsn, PgvisServer};
+use common::{PgvisServer, setup_test_db, test_dsn};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::sync::OnceLock;
@@ -142,7 +142,8 @@ async fn test_error_column_not_found_in_filter() {
     let resp = get("/api/test/items?nonexistent_col=eq.hello").await;
     let status = resp.status();
     assert!(
-        status == StatusCode::NOT_FOUND || status == StatusCode::BAD_REQUEST
+        status == StatusCode::NOT_FOUND
+            || status == StatusCode::BAD_REQUEST
             || status == StatusCode::INTERNAL_SERVER_ERROR,
         "expected error for nonexistent column in filter, got {status}"
     );
@@ -153,7 +154,8 @@ async fn test_error_column_not_found_in_select() {
     let resp = get("/api/test/items?select=nonexistent_col").await;
     let status = resp.status();
     assert!(
-        status == StatusCode::NOT_FOUND || status == StatusCode::BAD_REQUEST
+        status == StatusCode::NOT_FOUND
+            || status == StatusCode::BAD_REQUEST
             || status == StatusCode::INTERNAL_SERVER_ERROR,
         "expected error for nonexistent column in select, got {status}"
     );
@@ -164,7 +166,8 @@ async fn test_error_column_not_found_in_order() {
     let resp = get("/api/test/items?order=nonexistent_col.asc").await;
     let status = resp.status();
     assert!(
-        status == StatusCode::NOT_FOUND || status == StatusCode::BAD_REQUEST
+        status == StatusCode::NOT_FOUND
+            || status == StatusCode::BAD_REQUEST
             || status == StatusCode::INTERNAL_SERVER_ERROR,
         "expected error for nonexistent column in order, got {status}"
     );
@@ -265,11 +268,7 @@ async fn test_error_response_structure() {
 #[tokio::test]
 async fn test_patch_on_view_may_error() {
     // Views are typically not updatable unless explicitly made so
-    let resp = patch(
-        "/api/test/items_view?id=eq.1",
-        json!({"name": "NewName"}),
-    )
-    .await;
+    let resp = patch("/api/test/items_view?id=eq.1", json!({"name": "NewName"})).await;
     let status = resp.status();
     // Might be 405 Method Not Allowed or some other error
     assert!(
@@ -310,7 +309,10 @@ async fn test_singular_response_single_row() {
     if status == StatusCode::OK {
         let body: serde_json::Value = resp.json().await.unwrap();
         // Should be a single object, not array
-        assert!(body.is_object(), "singular response should be object, got: {body}");
+        assert!(
+            body.is_object(),
+            "singular response should be object, got: {body}"
+        );
         assert_eq!(body["id"], 1);
     }
 }

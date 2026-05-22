@@ -26,13 +26,13 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
+use rmcp::ServerHandler;
 use rmcp::model::{
     Annotated, CallToolRequestParams, CallToolResult, Content, Implementation, InitializeResult,
     ListResourcesResult, ListToolsResult, PaginatedRequestParams, RawResource,
     ReadResourceRequestParams, ReadResourceResult, ResourceContents, ServerCapabilities, Tool,
 };
 use rmcp::service::{RequestContext, RoleServer};
-use rmcp::ServerHandler;
 
 use pgvis_core::backend::Backend;
 use pgvis_core::{Config, Dialect, SchemaCache};
@@ -112,9 +112,8 @@ impl ServerHandler for McpServer {
         &self,
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = Result<ListToolsResult, rmcp::ErrorData>>
-           + Send
-           + '_ {
+    ) -> impl std::future::Future<Output = Result<ListToolsResult, rmcp::ErrorData>> + Send + '_
+    {
         async move {
             let cache = self.cache.load();
             let tools = build_mcp_tools(&cache, &self.config);
@@ -141,9 +140,8 @@ impl ServerHandler for McpServer {
         &self,
         request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = Result<CallToolResult, rmcp::ErrorData>>
-           + Send
-           + '_ {
+    ) -> impl std::future::Future<Output = Result<CallToolResult, rmcp::ErrorData>> + Send + '_
+    {
         async move {
             let cache = self.cache.load();
 
@@ -158,14 +156,8 @@ impl ServerHandler for McpServer {
                 arguments,
             };
 
-            let result = handle_tool_call(
-                &call,
-                &cache,
-                &self.dialect,
-                &self.config,
-                &*self.backend,
-            )
-            .await;
+            let result =
+                handle_tool_call(&call, &cache, &self.dialect, &self.config, &*self.backend).await;
 
             // Convert our McpToolResult to rmcp's CallToolResult
             let content: Vec<Content> = result
@@ -188,9 +180,8 @@ impl ServerHandler for McpServer {
         &self,
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = Result<ListResourcesResult, rmcp::ErrorData>>
-           + Send
-           + '_ {
+    ) -> impl std::future::Future<Output = Result<ListResourcesResult, rmcp::ErrorData>> + Send + '_
+    {
         async move {
             let cache = self.cache.load();
             let resources = build_mcp_resources(&cache, &self.config);
@@ -226,9 +217,8 @@ impl ServerHandler for McpServer {
         &self,
         request: ReadResourceRequestParams,
         _context: RequestContext<RoleServer>,
-    ) -> impl std::future::Future<Output = Result<ReadResourceResult, rmcp::ErrorData>>
-           + Send
-           + '_ {
+    ) -> impl std::future::Future<Output = Result<ReadResourceResult, rmcp::ErrorData>> + Send + '_
+    {
         async move {
             let cache = self.cache.load();
             let uri = request.uri.as_str();

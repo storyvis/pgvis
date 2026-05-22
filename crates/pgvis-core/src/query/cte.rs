@@ -104,7 +104,8 @@ mod tests {
     #[test]
     fn test_cte_postgres() {
         let mut ctx = RenderContext::new(&POSTGRES);
-        let inner = "SELECT \"users\".\"id\", \"users\".\"name\" FROM \"public\".\"users\" AS \"users\"";
+        let inner =
+            "SELECT \"users\".\"id\", \"users\".\"name\" FROM \"public\".\"users\" AS \"users\"";
 
         wrap_cte(inner, None, None, &mut ctx);
 
@@ -141,7 +142,12 @@ mod tests {
         let inner = "SELECT * FROM \"users\" LIMIT 10 OFFSET 0";
         let count_src = "SELECT * FROM \"users\"";
 
-        wrap_cte(inner, Some(count_src), Some(&CountStrategy::Exact), &mut ctx);
+        wrap_cte(
+            inner,
+            Some(count_src),
+            Some(&CountStrategy::Exact),
+            &mut ctx,
+        );
 
         let sql = ctx.sql();
         assert!(sql.contains("pgrst_count AS ("));

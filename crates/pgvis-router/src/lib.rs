@@ -42,4 +42,4 @@ pub mod openapi;
 pub mod response;
 pub mod routing;
 
-pub use routing::{build_app, AppState};
+pub use routing::{AppState, build_app};

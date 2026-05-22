@@ -22,8 +22,8 @@ use serde_json::Value;
 
 use crate::dialect::Dialect;
 use crate::error::Error;
-use crate::plan::types::CountStrategy;
 use crate::plan::ActionPlan;
+use crate::plan::types::CountStrategy;
 
 pub use cte::wrap_cte;
 
@@ -81,11 +81,7 @@ impl<'d> RenderContext<'d> {
     /// Uses schema qualification only when `dialect.schema_namespacing` is true.
     pub fn qualified_table(&self, schema: &str, name: &str) -> String {
         if self.dialect.schema_namespacing {
-            format!(
-                "{}.{}",
-                self.quote_ident(schema),
-                self.quote_ident(name)
-            )
+            format!("{}.{}", self.quote_ident(schema), self.quote_ident(name))
         } else {
             self.quote_ident(name)
         }
@@ -237,7 +233,10 @@ mod tests {
     #[test]
     fn render_context_qualified_table_postgres() {
         let ctx = RenderContext::new(&POSTGRES);
-        assert_eq!(ctx.qualified_table("public", "users"), "\"public\".\"users\"");
+        assert_eq!(
+            ctx.qualified_table("public", "users"),
+            "\"public\".\"users\""
+        );
     }
 
     #[test]

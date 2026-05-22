@@ -67,7 +67,11 @@ async fn main() -> anyhow::Result<()> {
         schema: vec![],
         mcp_http: false,
     }) {
-        Cmd::Serve { bind, schema, mcp_http } => {
+        Cmd::Serve {
+            bind,
+            schema,
+            mcp_http,
+        } => {
             // Override schemas from CLI if provided
             if !schema.is_empty() {
                 config.schemas = schema;
@@ -110,8 +114,7 @@ async fn main() -> anyhow::Result<()> {
                 .await?;
 
             let cache = components.cache.load();
-            let spec =
-                pgvis_lib::pgvis_router::openapi::generate_spec(&cache, &components.config);
+            let spec = pgvis_lib::pgvis_router::openapi::generate_spec(&cache, &components.config);
             let json = serde_json::to_string_pretty(&spec)?;
             println!("{json}");
         }
@@ -138,8 +141,8 @@ async fn main() -> anyhow::Result<()> {
 /// 2. TOML config file (if `--config` flag or `PGVIS_CONFIG` env var is set)
 /// 3. Environment variables prefixed with `PGVIS_`
 fn load_config(path: Option<&std::path::Path>) -> anyhow::Result<Config> {
-    use figment::providers::{Env, Format, Serialized, Toml};
     use figment::Figment;
+    use figment::providers::{Env, Format, Serialized, Toml};
 
     let mut figment = Figment::from(Serialized::defaults(Config::default()));
 

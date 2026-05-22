@@ -25,7 +25,9 @@ pub mod introspect;
 
 use deadpool_postgres::{Config as PoolConfig, Pool, Runtime};
 use futures::future::BoxFuture;
-use pgvis_core::backend::{Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream};
+use pgvis_core::backend::{
+    Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream,
+};
 use pgvis_core::cache::SchemaCache;
 use pgvis_core::dialect::{self, Dialect};
 use pgvis_core::error::Error;
@@ -122,16 +124,12 @@ impl Backend for PgBackend {
         let params = params.to_vec();
         let ctx = ctx.clone();
         Box::pin(async move {
-            let client = self
-                .pool
-                .get()
-                .await
-                .map_err(|e| Error::Execution {
-                    message: format!("pool error: {e}"),
-                    db_code: None,
-                    detail: None,
-                    hint: None,
-                })?;
+            let client = self.pool.get().await.map_err(|e| Error::Execution {
+                message: format!("pool error: {e}"),
+                db_code: None,
+                detail: None,
+                hint: None,
+            })?;
 
             execute::execute_query(&client, &ctx, &sql, &params).await
         })

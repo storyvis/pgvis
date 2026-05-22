@@ -59,15 +59,17 @@ pub mod select_ast;
 
 // Re-export primary types for ergonomic use
 pub use backend::{Backend, ExecContext, IntrospectConfig, QueryResult, SchemaChangeStream};
-pub use plan::{plan_request, ActionPlan, ApiRequest, CallPlan, MutatePlan, PlanConfig, ReadPlan, RequestMethod};
 pub use cache::{
     Cardinality, Column, ComputedRelationship, DataRepresentation, MediaHandler,
-    QualifiedIdentifier, Relationship, Routine, RoutineParam, SchemaCache, Table,
-    UniqueConstraint, Volatility,
+    QualifiedIdentifier, Relationship, Routine, RoutineParam, SchemaCache, Table, UniqueConstraint,
+    Volatility,
 };
 pub use config::{Config, RoutingConfig};
-pub use dialect::{Dialect, Placeholder, POSTGRES, SQLITE};
+pub use dialect::{Dialect, POSTGRES, Placeholder, SQLITE};
 pub use error::{Error, ErrorCode};
+pub use plan::{
+    ActionPlan, ApiRequest, CallPlan, MutatePlan, PlanConfig, ReadPlan, RequestMethod, plan_request,
+};
 pub use preferences::Preferences;
 pub use select_ast::{
     AggregateFunction, FieldSelect, JoinType, JsonOperand, JsonOperation, RelationSelect,
