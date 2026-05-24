@@ -4,8 +4,8 @@ use indexmap::IndexMap;
 use pgvis_core::cache::{Column, QualifiedIdentifier, Table, UniqueConstraint};
 use pgvis_core::error::Error;
 use serde::Deserialize;
-use tokio_postgres::types::Type;
 use tokio_postgres::Client;
+use tokio_postgres::types::Type;
 
 /// SQL query for tables introspection (loaded at compile time).
 const TABLES_SQL: &str = include_str!("../sql/tables.sql");
@@ -59,8 +59,9 @@ pub async fn query_tables(
 
         // Decode columns from JSON
         let columns_json: serde_json::Value = row.get("columns");
-        let column_rows: Vec<ColumnJson> = serde_json::from_value(columns_json)
-            .map_err(|e| Error::Introspection(format!("failed to decode columns for {schema}.{name}: {e}")))?;
+        let column_rows: Vec<ColumnJson> = serde_json::from_value(columns_json).map_err(|e| {
+            Error::Introspection(format!("failed to decode columns for {schema}.{name}: {e}"))
+        })?;
 
         let mut columns = IndexMap::new();
         for (idx, col) in column_rows.iter().enumerate() {

@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{assert_json, prefer, setup_test_db, test_dsn, PgvisServer};
+use common::{PgvisServer, assert_json, prefer, setup_test_db, test_dsn};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::sync::OnceLock;
@@ -237,7 +237,11 @@ async fn test_insert_multiple_rows() {
     );
     let body: serde_json::Value = resp.json().await.unwrap();
     let arr = body.as_array().expect("body should be array");
-    assert!(arr.len() >= 3, "expected at least 3 inserted rows, got {}", arr.len());
+    assert!(
+        arr.len() >= 3,
+        "expected at least 3 inserted rows, got {}",
+        arr.len()
+    );
 }
 
 #[tokio::test]
@@ -300,11 +304,7 @@ async fn test_insert_jsonb_field() {
 
 #[tokio::test]
 async fn test_insert_nonexistent_table_returns_404() {
-    let resp = post(
-        "/api/test/nonexistent",
-        json!({"name": "test"}),
-    )
-    .await;
+    let resp = post("/api/test/nonexistent", json!({"name": "test"})).await;
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
@@ -410,11 +410,7 @@ async fn test_update_with_select() {
 
 #[tokio::test]
 async fn test_update_nonexistent_table_returns_404() {
-    let resp = patch(
-        "/api/test/nonexistent?id=eq.1",
-        json!({"name": "test"}),
-    )
-    .await;
+    let resp = patch("/api/test/nonexistent?id=eq.1", json!({"name": "test"})).await;
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
@@ -425,11 +421,7 @@ async fn test_update_nonexistent_table_returns_404() {
 #[tokio::test]
 async fn test_delete_with_filter() {
     // First insert something to delete
-    post(
-        "/api/test/no_pk",
-        json!({"a": "to_delete", "b": 999}),
-    )
-    .await;
+    post("/api/test/no_pk", json!({"a": "to_delete", "b": 999})).await;
 
     let resp = delete_prefer("/api/test/no_pk?a=eq.to_delete", "return=representation").await;
     let status = resp.status();
@@ -442,11 +434,7 @@ async fn test_delete_with_filter() {
 #[tokio::test]
 async fn test_delete_returns_200() {
     // Insert then delete
-    post(
-        "/api/test/no_pk",
-        json!({"a": "del_test", "b": 888}),
-    )
-    .await;
+    post("/api/test/no_pk", json!({"a": "del_test", "b": 888})).await;
 
     let resp = delete("/api/test/no_pk?a=eq.del_test").await;
     let status = resp.status();
@@ -459,11 +447,7 @@ async fn test_delete_returns_200() {
 #[tokio::test]
 async fn test_delete_with_return_representation() {
     // Insert then delete
-    post(
-        "/api/test/no_pk",
-        json!({"a": "del_repr", "b": 777}),
-    )
-    .await;
+    post("/api/test/no_pk", json!({"a": "del_repr", "b": 777})).await;
 
     let resp = delete_prefer("/api/test/no_pk?a=eq.del_repr", "return=representation").await;
     let status = resp.status();

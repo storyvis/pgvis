@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 56" fill="none" role="img" aria-label="pgvis">
+  <g transform="translate(0 5)" stroke="#0b0b14" fill="#0b0b14">
+    <line x1="3" y1="24" x2="14" y2="24" stroke-width="2" stroke-linecap="round" />
+    <path d="M 14 12 L 28 24 L 14 36 Z" stroke="none" />
+    <line x1="28" y1="24" x2="44" y2="14" stroke-width="2" stroke-linecap="round" />
+    <line x1="28" y1="24" x2="45" y2="24" stroke-width="2" stroke-linecap="round" />
+    <line x1="28" y1="24" x2="44" y2="34" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text
+    x="52" y="41"
+    font-family="Geist, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-weight="700"
+    font-size="42"
+    letter-spacing="-1.26"
+    fill="#0b0b14"
+  >pgvis</text>
+</svg>

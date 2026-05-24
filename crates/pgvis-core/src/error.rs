@@ -49,12 +49,10 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorCode {
     // --- Connection / Infrastructure (0xx) ---
-
     /// Pool connection timeout or unavailable.
     ConnectionError,
 
     // --- Parse errors (1xx) ---
-
     /// Invalid `select` parameter syntax.
     InvalidSelect,
     /// Invalid filter expression syntax.
@@ -69,7 +67,6 @@ pub enum ErrorCode {
     InvalidPreference,
 
     // --- Plan / Schema resolution errors (2xx) ---
-
     /// Ambiguous relationship — multiple FKs between same table pair, no hint.
     AmbiguousRelationship,
     /// Ambiguous function — multiple overloads match the given arguments.
@@ -86,7 +83,6 @@ pub enum ErrorCode {
     AggregatesDisabled,
 
     // --- Auth errors (3xx) ---
-
     /// No JWT token provided when one is required.
     JwtMissing,
     /// JWT signature verification failed.
@@ -97,7 +93,6 @@ pub enum ErrorCode {
     InsufficientPrivilege,
 
     // --- Execution errors ---
-
     /// Database returned an error during query execution.
     DatabaseError,
     /// Statement timeout exceeded.
@@ -106,7 +101,6 @@ pub enum ErrorCode {
     MaxAffectedExceeded,
 
     // --- pgvis-specific ---
-
     /// Operation not supported by the current backend/dialect.
     UnsupportedOperation,
     /// Internal error (should not happen — indicates a bug).
@@ -344,11 +338,7 @@ impl Error {
     }
 
     /// Create a plan error for an ambiguous relationship.
-    pub fn ambiguous_relationship(
-        source: &str,
-        target: &str,
-        constraint_names: &[&str],
-    ) -> Self {
+    pub fn ambiguous_relationship(source: &str, target: &str, constraint_names: &[&str]) -> Self {
         Self::Plan {
             message: format!(
                 "Could not find a unique relationship between '{source}' and '{target}'"

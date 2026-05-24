@@ -42,7 +42,7 @@
 use std::sync::Arc;
 
 use rmcp::transport::streamable_http_server::{
-    session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
+    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
 
 use crate::McpServer;
@@ -162,9 +162,5 @@ pub fn streamable_http_service(
     let config = StreamableHttpServerConfig::default();
     let session_manager = Arc::new(LocalSessionManager::default());
 
-    StreamableHttpService::new(
-        move || Ok(server.clone()),
-        session_manager,
-        config,
-    )
+    StreamableHttpService::new(move || Ok(server.clone()), session_manager, config)
 }

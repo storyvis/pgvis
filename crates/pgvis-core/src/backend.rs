@@ -23,8 +23,8 @@
 
 use std::pin::Pin;
 
-use futures::future::BoxFuture;
 use futures::Stream;
+use futures::future::BoxFuture;
 use serde_json::Value;
 
 use crate::cache::SchemaCache;

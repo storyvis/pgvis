@@ -281,8 +281,14 @@ fn plan_call(
     let returning = if routine.return_type_is_composite && !request.select.is_empty() {
         // For table-valued functions, resolve select columns against the return type
         if let Some(return_table) = cache.find_table(&request.schema, &routine.return_type) {
-            let (selects, _embeds) =
-                resolve::resolve_select_items(cache, return_table, &request.schema, &request.select, dialect, config)?;
+            let (selects, _embeds) = resolve::resolve_select_items(
+                cache,
+                return_table,
+                &request.schema,
+                &request.select,
+                dialect,
+                config,
+            )?;
             selects
         } else {
             // Can't resolve columns — just pass star

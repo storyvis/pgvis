@@ -10,7 +10,7 @@ use pgvis_core::cache::{Column, QualifiedIdentifier, Table, UniqueConstraint};
 use pgvis_core::error::Error;
 use tokio_rusqlite::Connection;
 
-use crate::util::{escape_ident, SqliteInternalError};
+use crate::util::{SqliteInternalError, escape_ident};
 
 /// Query all tables and views from the SQLite database.
 ///
@@ -46,8 +46,8 @@ pub async fn query_tables(
             let ident = QualifiedIdentifier::new("main", name.as_str());
 
             // Query columns via PRAGMA table_xinfo (includes hidden/generated cols)
-            let columns = query_columns(conn, name)
-                .map_err(|e| tokio_rusqlite::Error::Other(Box::new(e)))?;
+            let columns =
+                query_columns(conn, name).map_err(|e| tokio_rusqlite::Error::Other(Box::new(e)))?;
 
             // Query unique constraints (includes PK) via PRAGMA index_list + index_info
             let unique_constraints = query_unique_constraints(conn, name)
@@ -86,7 +86,9 @@ fn query_columns(
 ) -> Result<IndexMap<String, Column>, SqliteInternalError> {
     let sql = format!("PRAGMA table_xinfo(\"{}\")", escape_ident(table_name));
     let mut stmt = conn.prepare(&sql).map_err(|e| {
-        SqliteInternalError(format!("failed to prepare table_xinfo for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "failed to prepare table_xinfo for {table_name}: {e}"
+        ))
     })?;
 
     // table_xinfo columns: cid, name, type, notnull, dflt_value, pk, hidden
@@ -96,7 +98,9 @@ fn query_columns(
     })?;
 
     while let Some(row) = rows.next().map_err(|e| {
-        SqliteInternalError(format!("table_xinfo iteration failed for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "table_xinfo iteration failed for {table_name}: {e}"
+        ))
     })? {
         let cid: i32 = row.get(0).unwrap_or(0);
         let name: String = row.get(1).unwrap_or_default();
@@ -157,7 +161,9 @@ fn determine_pk_cols(
     // Fallback: query PRAGMA table_info for pk columns
     let sql = format!("PRAGMA table_info(\"{}\")", escape_ident(table_name));
     let mut stmt = conn.prepare(&sql).map_err(|e| {
-        SqliteInternalError(format!("failed to prepare table_info for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "failed to prepare table_info for {table_name}: {e}"
+        ))
     })?;
 
     let mut pk_entries: Vec<(i32, String)> = Vec::new();
@@ -187,7 +193,9 @@ fn query_unique_constraints(
 ) -> Result<Vec<UniqueConstraint>, SqliteInternalError> {
     let sql = format!("PRAGMA index_list(\"{}\")", escape_ident(table_name));
     let mut stmt = conn.prepare(&sql).map_err(|e| {
-        SqliteInternalError(format!("failed to prepare index_list for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "failed to prepare index_list for {table_name}: {e}"
+        ))
     })?;
 
     // index_list columns: seq, name, unique, origin, partial
@@ -237,7 +245,9 @@ fn query_index_columns(
 ) -> Result<Vec<String>, SqliteInternalError> {
     let sql = format!("PRAGMA index_info(\"{}\")", escape_ident(index_name));
     let mut stmt = conn.prepare(&sql).map_err(|e| {
-        SqliteInternalError(format!("failed to prepare index_info for {index_name}: {e}"))
+        SqliteInternalError(format!(
+            "failed to prepare index_info for {index_name}: {e}"
+        ))
     })?;
 
     // index_info columns: seqno, cid, name
@@ -304,7 +314,6 @@ fn normalize_sqlite_type(declared: &str) -> String {
         }
     }
 }
-
 
 // ===========================================================================
 // Tests

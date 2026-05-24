@@ -21,7 +21,7 @@ pub mod types;
 
 pub use filter::parse_filter;
 pub use logic::parse_logic_tree;
-pub use order::{parse_order, OrderItem, OrderRelationTerm};
+pub use order::{OrderItem, OrderRelationTerm, parse_order};
 pub use select::parse_select;
 pub use types::{
     Filter, FilterValue, IsKind, LogicNode, LogicTree, NullsOrder, Operator, OrderDirection,

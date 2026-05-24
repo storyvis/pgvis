@@ -6,7 +6,7 @@
 use pgvis_core::backend::{Backend, ExecContext, IntrospectConfig, TxEnd};
 use pgvis_core::cache::Cardinality;
 use pgvis_sqlite::SqliteBackend;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Schema SQL loaded at compile time.
 const SCHEMA_SQL: &str = include_str!("fixtures/schema.sql");
@@ -155,13 +155,11 @@ async fn test_introspect_relationships() {
     // items.user_id → users.id should create M2O
     let items_ident = pgvis_core::QualifiedIdentifier::new("main", "items");
     let item_rels = cache.find_relationships(&items_ident);
-    let user_rel = item_rels
-        .iter()
-        .find(|r| {
-            r.source_table.name == "items"
-                && r.target_table.name == "users"
-                && matches!(r.cardinality, Cardinality::M2O)
-        });
+    let user_rel = item_rels.iter().find(|r| {
+        r.source_table.name == "items"
+            && r.target_table.name == "users"
+            && matches!(r.cardinality, Cardinality::M2O)
+    });
     assert!(user_rel.is_some(), "Should find M2O from items to users");
 }
 
@@ -176,13 +174,11 @@ async fn test_introspect_inverse_relationships() {
     // Should have O2M from users to items (inverse of items→users M2O)
     let users_ident = pgvis_core::QualifiedIdentifier::new("main", "users");
     let user_rels = cache.find_relationships(&users_ident);
-    let o2m_rel = user_rels
-        .iter()
-        .find(|r| {
-            r.source_table.name == "users"
-                && r.target_table.name == "items"
-                && matches!(r.cardinality, Cardinality::O2M)
-        });
+    let o2m_rel = user_rels.iter().find(|r| {
+        r.source_table.name == "users"
+            && r.target_table.name == "items"
+            && matches!(r.cardinality, Cardinality::O2M)
+    });
     assert!(o2m_rel.is_some(), "Should find O2M from users to items");
 }
 
@@ -203,7 +199,9 @@ async fn test_introspect_m2m_relationships() {
     assert!(
         m2m_rel.is_some(),
         "Should find M2M between items and tags via item_tags. Rels: {:?}",
-        cache.relationships.iter()
+        cache
+            .relationships
+            .iter()
             .filter(|r| matches!(r.cardinality, Cardinality::M2M { .. }))
             .collect::<Vec<_>>()
     );
@@ -220,7 +218,10 @@ async fn test_introspect_self_referential() {
     let cat_ident = pgvis_core::QualifiedIdentifier::new("main", "categories");
     let cat_rels = cache.find_relationships(&cat_ident);
     let self_rel = cat_rels.iter().find(|r| r.is_self);
-    assert!(self_rel.is_some(), "categories should have a self-referential FK");
+    assert!(
+        self_rel.is_some(),
+        "categories should have a self-referential FK"
+    );
 }
 
 #[tokio::test]
@@ -363,12 +364,7 @@ async fn test_json_column_parsing() {
 #[tokio::test]
 async fn test_null_values() {
     let backend = setup_backend().await;
-    let body = query(
-        &backend,
-        "SELECT * FROM nullable_test WHERE id = 2",
-        &[],
-    )
-    .await;
+    let body = query(&backend, "SELECT * FROM nullable_test WHERE id = 2", &[]).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr[0]["optional_col"], Value::Null);
     assert_eq!(arr[0]["optional_int"], Value::Null);
@@ -389,7 +385,12 @@ async fn test_unicode_data() {
     let body = query(&backend, "SELECT * FROM unicode_data ORDER BY id", &[]).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr[0]["label"], "Ünïcödé");
-    assert!(arr[0]["description"].as_str().unwrap().contains("こんにちは"));
+    assert!(
+        arr[0]["description"]
+            .as_str()
+            .unwrap()
+            .contains("こんにちは")
+    );
 }
 
 #[tokio::test]
@@ -411,7 +412,12 @@ async fn test_insert() {
     let body = mutate(
         &backend,
         "INSERT INTO users (id, username, email, is_active) VALUES (?1, ?2, ?3, ?4) RETURNING *",
-        &[json!(10), json!("dave"), json!("dave@example.com"), json!(true)],
+        &[
+            json!(10),
+            json!("dave"),
+            json!("dave@example.com"),
+            json!(true),
+        ],
     )
     .await;
     let arr = body.as_array().unwrap();
@@ -460,7 +466,12 @@ async fn test_upsert() {
         "INSERT INTO users (id, username, email, is_active) VALUES (?1, ?2, ?3, ?4) \
          ON CONFLICT(id) DO UPDATE SET email = excluded.email \
          RETURNING *",
-        &[json!(1), json!("alice"), json!("updated@example.com"), json!(true)],
+        &[
+            json!(1),
+            json!("alice"),
+            json!("updated@example.com"),
+            json!(true),
+        ],
     )
     .await;
     let arr = body.as_array().unwrap();

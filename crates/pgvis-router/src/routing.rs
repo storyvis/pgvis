@@ -21,12 +21,12 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use pgvis_core::backend::{Backend, ExecContext, TxEnd};
-use pgvis_core::plan::{plan_request, ActionPlan, ApiRequest, RequestBody, RequestMethod};
+use pgvis_core::config::OpenApiMode;
+use pgvis_core::plan::{ActionPlan, ApiRequest, RequestBody, RequestMethod, plan_request};
 use pgvis_core::preferences::{PreferTx, Preferences};
 use pgvis_core::query;
 use pgvis_core::query_params::{self, LogicTree, OrderItem};
 use pgvis_core::select_ast::SelectItem;
-use pgvis_core::config::OpenApiMode;
 use pgvis_core::{Config, Dialect, SchemaCache};
 
 use crate::openapi;
@@ -96,13 +96,19 @@ pub fn build_app(
         // Mode 1: /{prefix}/{schema}/{table} and /{prefix}/{schema}/rpc/{fn}
         if prefix.is_empty() {
             router = router
-                .route("/{schema}/rpc/{function}", get(handle_rpc_with_schema).post(handle_rpc_with_schema))
-                .route("/{schema}/{target}", get(handle_table_with_schema)
-                    .head(handle_table_with_schema)
-                    .post(handle_table_with_schema)
-                    .put(handle_table_with_schema)
-                    .patch(handle_table_with_schema)
-                    .delete(handle_table_with_schema))
+                .route(
+                    "/{schema}/rpc/{function}",
+                    get(handle_rpc_with_schema).post(handle_rpc_with_schema),
+                )
+                .route(
+                    "/{schema}/{target}",
+                    get(handle_table_with_schema)
+                        .head(handle_table_with_schema)
+                        .post(handle_table_with_schema)
+                        .put(handle_table_with_schema)
+                        .patch(handle_table_with_schema)
+                        .delete(handle_table_with_schema),
+                )
                 .route("/", get(handle_root));
         } else {
             let rpc_path = format!("/{prefix}/{{schema}}/rpc/{{function}}");
@@ -110,26 +116,38 @@ pub fn build_app(
             let root_path = format!("/{prefix}/");
 
             router = router
-                .route(&rpc_path, get(handle_rpc_with_schema).post(handle_rpc_with_schema))
-                .route(&table_path, get(handle_table_with_schema)
-                    .head(handle_table_with_schema)
-                    .post(handle_table_with_schema)
-                    .put(handle_table_with_schema)
-                    .patch(handle_table_with_schema)
-                    .delete(handle_table_with_schema))
+                .route(
+                    &rpc_path,
+                    get(handle_rpc_with_schema).post(handle_rpc_with_schema),
+                )
+                .route(
+                    &table_path,
+                    get(handle_table_with_schema)
+                        .head(handle_table_with_schema)
+                        .post(handle_table_with_schema)
+                        .put(handle_table_with_schema)
+                        .patch(handle_table_with_schema)
+                        .delete(handle_table_with_schema),
+                )
                 .route(&root_path, get(handle_root));
         }
     } else {
         // Mode 2/3: /{prefix}/{table} or /{table} (schema from header/default)
         if prefix.is_empty() {
             router = router
-                .route("/rpc/{function}", get(handle_rpc_no_schema).post(handle_rpc_no_schema))
-                .route("/{target}", get(handle_table_no_schema)
-                    .head(handle_table_no_schema)
-                    .post(handle_table_no_schema)
-                    .put(handle_table_no_schema)
-                    .patch(handle_table_no_schema)
-                    .delete(handle_table_no_schema))
+                .route(
+                    "/rpc/{function}",
+                    get(handle_rpc_no_schema).post(handle_rpc_no_schema),
+                )
+                .route(
+                    "/{target}",
+                    get(handle_table_no_schema)
+                        .head(handle_table_no_schema)
+                        .post(handle_table_no_schema)
+                        .put(handle_table_no_schema)
+                        .patch(handle_table_no_schema)
+                        .delete(handle_table_no_schema),
+                )
                 .route("/", get(handle_root));
         } else {
             let rpc_path = format!("/{prefix}/rpc/{{function}}");
@@ -137,13 +155,19 @@ pub fn build_app(
             let root_path = format!("/{prefix}/");
 
             router = router
-                .route(&rpc_path, get(handle_rpc_no_schema).post(handle_rpc_no_schema))
-                .route(&table_path, get(handle_table_no_schema)
-                    .head(handle_table_no_schema)
-                    .post(handle_table_no_schema)
-                    .put(handle_table_no_schema)
-                    .patch(handle_table_no_schema)
-                    .delete(handle_table_no_schema))
+                .route(
+                    &rpc_path,
+                    get(handle_rpc_no_schema).post(handle_rpc_no_schema),
+                )
+                .route(
+                    &table_path,
+                    get(handle_table_no_schema)
+                        .head(handle_table_no_schema)
+                        .post(handle_table_no_schema)
+                        .put(handle_table_no_schema)
+                        .patch(handle_table_no_schema)
+                        .delete(handle_table_no_schema),
+                )
                 .route(&root_path, get(handle_root));
         }
     }
@@ -168,7 +192,17 @@ async fn handle_table_with_schema(
     let target = params.get("target").cloned().unwrap_or_default();
     let request_method = http_method_to_request_method(&method);
 
-    dispatch_request(&state, schema, target, request_method, false, &headers, &query_params, body.map(|b| b.0)).await
+    dispatch_request(
+        &state,
+        schema,
+        target,
+        request_method,
+        false,
+        &headers,
+        &query_params,
+        body.map(|b| b.0),
+    )
+    .await
 }
 
 /// Handle RPC requests when the schema is in the URL path.
@@ -185,7 +219,17 @@ async fn handle_rpc_with_schema(
 
     // RPC accepts GET (immutable functions, args from query params) and POST (args from body)
     let request_method = http_method_to_request_method(&method);
-    dispatch_request(&state, schema, function, request_method, true, &headers, &query_params, body.map(|b| b.0)).await
+    dispatch_request(
+        &state,
+        schema,
+        function,
+        request_method,
+        true,
+        &headers,
+        &query_params,
+        body.map(|b| b.0),
+    )
+    .await
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +249,17 @@ async fn handle_table_no_schema(
     let schema = resolve_schema_from_headers(&headers, &state.config);
     let request_method = http_method_to_request_method(&method);
 
-    dispatch_request(&state, schema, target, request_method, false, &headers, &query_params, body.map(|b| b.0)).await
+    dispatch_request(
+        &state,
+        schema,
+        target,
+        request_method,
+        false,
+        &headers,
+        &query_params,
+        body.map(|b| b.0),
+    )
+    .await
 }
 
 /// Handle RPC requests when the schema comes from headers/config.
@@ -222,7 +276,17 @@ async fn handle_rpc_no_schema(
 
     // RPC accepts GET (immutable functions, args from query params) and POST (args from body)
     let request_method = http_method_to_request_method(&method);
-    dispatch_request(&state, schema, function, request_method, true, &headers, &query_params, body.map(|b| b.0)).await
+    dispatch_request(
+        &state,
+        schema,
+        function,
+        request_method,
+        true,
+        &headers,
+        &query_params,
+        body.map(|b| b.0),
+    )
+    .await
 }
 
 // ---------------------------------------------------------------------------
@@ -230,17 +294,16 @@ async fn handle_rpc_no_schema(
 // ---------------------------------------------------------------------------
 
 /// Root endpoint handler — returns available schemas or the OpenAPI spec.
-async fn handle_root(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> Response {
+async fn handle_root(State(state): State<AppState>, headers: HeaderMap) -> Response {
     // Check if the client accepts OpenAPI JSON
     let accept = headers
         .get("accept")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    if accept.contains("application/openapi+json") || accept.contains("application/vnd.pgrst.object") {
+    if accept.contains("application/openapi+json")
+        || accept.contains("application/vnd.pgrst.object")
+    {
         // Check if OpenAPI is disabled
         if state.config.openapi_mode == OpenApiMode::Disabled {
             return (
@@ -251,7 +314,8 @@ async fn handle_root(
                     "details": null,
                     "hint": "Set openapi_mode to IgnorePrivileges or FollowPrivileges to enable.",
                 })),
-            ).into_response();
+            )
+                .into_response();
         }
 
         // Generate OpenAPI spec
@@ -265,7 +329,8 @@ async fn handle_root(
                     "code": "PGV500",
                     "message": format!("Failed to serialize OpenAPI spec: {e}"),
                 })),
-            ).into_response(),
+            )
+                .into_response(),
         }
     } else {
         let resp = serde_json::json!({
@@ -309,7 +374,14 @@ async fn dispatch_request(
 
     // 1. Build the adapter-agnostic ApiRequest
     let api_request = build_api_request(
-        schema, target, method.clone(), is_rpc, headers, params, body, &preferences,
+        schema,
+        target,
+        method.clone(),
+        is_rpc,
+        headers,
+        params,
+        body,
+        &preferences,
     );
 
     // 2. Plan the request against the schema cache
@@ -436,9 +508,9 @@ fn build_api_request(
     let on_conflict = params.get("on_conflict").cloned();
 
     // Columns
-    let columns = params.get("columns").map(|s| {
-        s.split(',').map(|c| c.trim().to_string()).collect()
-    });
+    let columns = params
+        .get("columns")
+        .map(|s| s.split(',').map(|c| c.trim().to_string()).collect());
 
     // Parse logic filters (and=, or=, not.and=, not.or=)
     let logic_filters = parse_logic_filters_from_params(params);
@@ -489,7 +561,10 @@ fn verify_jwt(headers: &HeaderMap, config: &Config) -> Result<AuthResult, Respon
     let token = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.strip_prefix("Bearer ").or_else(|| s.strip_prefix("bearer ")));
+        .and_then(|s| {
+            s.strip_prefix("Bearer ")
+                .or_else(|| s.strip_prefix("bearer "))
+        });
 
     let token = match token {
         Some(t) => t,
@@ -510,12 +585,13 @@ fn verify_jwt(headers: &HeaderMap, config: &Config) -> Result<AuthResult, Respon
                     "details": null,
                     "hint": "Provide an Authorization: Bearer <token> header",
                 })),
-            ).into_response());
+            )
+                .into_response());
         }
     };
 
     // Build the decoding key based on the algorithm
-    use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+    use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
     use pgvis_core::config::JwtAlgorithm;
 
     let algorithm = match config.jwt_algo {
@@ -530,16 +606,10 @@ fn verify_jwt(headers: &HeaderMap, config: &Config) -> Result<AuthResult, Respon
         Algorithm::HS256 | Algorithm::HS384 | Algorithm::HS512 => {
             DecodingKey::from_secret(secret.as_bytes())
         }
-        Algorithm::RS256 => {
-            DecodingKey::from_rsa_pem(secret.as_bytes()).unwrap_or_else(|_| {
-                DecodingKey::from_secret(secret.as_bytes())
-            })
-        }
-        Algorithm::EdDSA => {
-            DecodingKey::from_ed_pem(secret.as_bytes()).unwrap_or_else(|_| {
-                DecodingKey::from_secret(secret.as_bytes())
-            })
-        }
+        Algorithm::RS256 => DecodingKey::from_rsa_pem(secret.as_bytes())
+            .unwrap_or_else(|_| DecodingKey::from_secret(secret.as_bytes())),
+        Algorithm::EdDSA => DecodingKey::from_ed_pem(secret.as_bytes())
+            .unwrap_or_else(|_| DecodingKey::from_secret(secret.as_bytes())),
         _ => DecodingKey::from_secret(secret.as_bytes()),
     };
 
@@ -577,7 +647,8 @@ fn verify_jwt(headers: &HeaderMap, config: &Config) -> Result<AuthResult, Respon
                     "details": err.to_string(),
                     "hint": null,
                 })),
-            ).into_response())
+            )
+                .into_response())
         }
     }
 }
@@ -619,7 +690,14 @@ fn build_exec_context(
 fn parse_filters_from_params(
     params: &HashMap<String, String>,
 ) -> Vec<pgvis_core::query_params::Filter> {
-    const RESERVED: &[&str] = &["select", "order", "limit", "offset", "on_conflict", "columns"];
+    const RESERVED: &[&str] = &[
+        "select",
+        "order",
+        "limit",
+        "offset",
+        "on_conflict",
+        "columns",
+    ];
     let mut filters = Vec::new();
 
     for (key, value) in params {
@@ -667,10 +745,14 @@ fn parse_logic_filters_from_params(params: &HashMap<String, String>) -> Vec<Logi
                     pgvis_core::query_params::LogicNode::Not(inner) => {
                         // not.and/not.or: wrap in a single-item And with negation
                         // The plan layer handles Not nodes within the tree
-                        trees.push(LogicTree::And(vec![pgvis_core::query_params::LogicNode::Not(inner)]));
+                        trees.push(LogicTree::And(vec![
+                            pgvis_core::query_params::LogicNode::Not(inner),
+                        ]));
                     }
                     pgvis_core::query_params::LogicNode::Filter(f) => {
-                        trees.push(LogicTree::And(vec![pgvis_core::query_params::LogicNode::Filter(f)]));
+                        trees.push(LogicTree::And(vec![
+                            pgvis_core::query_params::LogicNode::Filter(f),
+                        ]));
                     }
                 }
             }

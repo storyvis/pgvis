@@ -4,8 +4,8 @@ use indexmap::IndexMap;
 use pgvis_core::cache::{IsolationLevel, QualifiedIdentifier, Routine, RoutineParam, Volatility};
 use pgvis_core::error::Error;
 use serde::Deserialize;
-use tokio_postgres::types::Type;
 use tokio_postgres::Client;
+use tokio_postgres::types::Type;
 
 /// SQL query for routines introspection (loaded at compile time).
 const ROUTINES_SQL: &str = include_str!("../sql/routines.sql");
@@ -57,8 +57,9 @@ pub async fn query_routines(
 
         // Decode params from JSON
         let params_json: serde_json::Value = row.get("params");
-        let param_rows: Vec<ParamJson> = serde_json::from_value(params_json)
-            .map_err(|e| Error::Introspection(format!("failed to decode params for {schema}.{name}: {e}")))?;
+        let param_rows: Vec<ParamJson> = serde_json::from_value(params_json).map_err(|e| {
+            Error::Introspection(format!("failed to decode params for {schema}.{name}: {e}"))
+        })?;
 
         let params: Vec<RoutineParam> = param_rows
             .into_iter()
@@ -97,12 +98,10 @@ pub async fn query_routines(
 
         // Function settings
         let settings_json: serde_json::Value = row.get("settings");
-        let setting_rows: Vec<SettingJson> = serde_json::from_value(settings_json)
-            .unwrap_or_default();
-        let settings: Vec<(String, String)> = setting_rows
-            .into_iter()
-            .map(|s| (s.key, s.value))
-            .collect();
+        let setting_rows: Vec<SettingJson> =
+            serde_json::from_value(settings_json).unwrap_or_default();
+        let settings: Vec<(String, String)> =
+            setting_rows.into_iter().map(|s| (s.key, s.value)).collect();
 
         let return_type = if return_type_schema == "pg_catalog" {
             return_type_name.clone()

@@ -8,7 +8,7 @@ use pgvis_core::cache::{Cardinality, QualifiedIdentifier, Relationship, Table, U
 use pgvis_core::error::Error;
 use tokio_rusqlite::Connection;
 
-use crate::util::{escape_ident, SqliteInternalError};
+use crate::util::{SqliteInternalError, escape_ident};
 
 /// Query all foreign key relationships from the introspected tables.
 ///
@@ -48,7 +48,9 @@ fn query_table_fks(
 ) -> Result<Vec<Relationship>, SqliteInternalError> {
     let sql = format!("PRAGMA foreign_key_list(\"{}\")", escape_ident(table_name));
     let mut stmt = conn.prepare(&sql).map_err(|e| {
-        SqliteInternalError(format!("failed to prepare foreign_key_list for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "failed to prepare foreign_key_list for {table_name}: {e}"
+        ))
     })?;
 
     // foreign_key_list columns: id, seq, table, from, to, on_update, on_delete, match
@@ -56,11 +58,15 @@ fn query_table_fks(
     let mut fk_map: std::collections::BTreeMap<i32, FkEntry> = std::collections::BTreeMap::new();
 
     let mut rows = stmt.query([]).map_err(|e| {
-        SqliteInternalError(format!("failed to query foreign_key_list for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "failed to query foreign_key_list for {table_name}: {e}"
+        ))
     })?;
 
     while let Some(row) = rows.next().map_err(|e| {
-        SqliteInternalError(format!("foreign_key_list iteration failed for {table_name}: {e}"))
+        SqliteInternalError(format!(
+            "foreign_key_list iteration failed for {table_name}: {e}"
+        ))
     })? {
         let id: i32 = row.get(0).unwrap_or(0);
         let _seq: i32 = row.get(1).unwrap_or(0);
@@ -99,10 +105,7 @@ fn query_table_fks(
         };
 
         // Synthesize a constraint name (SQLite doesn't name FK constraints)
-        let constraint_name = format!(
-            "{table_name}_{}_fkey_{id}",
-            entry.source_columns.join("_")
-        );
+        let constraint_name = format!("{table_name}_{}_fkey_{id}", entry.source_columns.join("_"));
 
         rels.push(Relationship {
             source_table: source_ident.clone(),
@@ -135,4 +138,3 @@ struct FkEntry {
     source_columns: Vec<String>,
     target_columns: Vec<String>,
 }
-

@@ -1,10 +1,10 @@
 //! # Validation — checks plan constraints and synthesizes GROUP BY.
 
+use super::planner::PlanConfig;
+use super::types::*;
 use crate::dialect::Dialect;
 use crate::error::{Error, ErrorCode};
 use crate::query_params::types::Operator;
-use super::planner::PlanConfig;
-use super::types::*;
 
 /// Validate aggregate functions in the select list.
 /// Returns error if aggregates are disabled.
@@ -49,9 +49,7 @@ pub fn validate_mutation_target(
             if !table_info.insertable {
                 return Err(Error::Plan {
                     message: format!("Table '{table_name}' is not insertable"),
-                    detail: Some(
-                        "This may be a view without INSERT rules/triggers".to_string(),
-                    ),
+                    detail: Some("This may be a view without INSERT rules/triggers".to_string()),
                     hint: None,
                     code: ErrorCode::UnsupportedOperation,
                 });
@@ -61,9 +59,7 @@ pub fn validate_mutation_target(
             if !table_info.updatable {
                 return Err(Error::Plan {
                     message: format!("Table '{table_name}' is not updatable"),
-                    detail: Some(
-                        "This may be a view without UPDATE rules/triggers".to_string(),
-                    ),
+                    detail: Some("This may be a view without UPDATE rules/triggers".to_string()),
                     hint: None,
                     code: ErrorCode::UnsupportedOperation,
                 });
@@ -73,9 +69,7 @@ pub fn validate_mutation_target(
             if !table_info.deletable {
                 return Err(Error::Plan {
                     message: format!("Table '{table_name}' is not deletable"),
-                    detail: Some(
-                        "This may be a view without DELETE rules/triggers".to_string(),
-                    ),
+                    detail: Some("This may be a view without DELETE rules/triggers".to_string()),
                     hint: None,
                     code: ErrorCode::UnsupportedOperation,
                 });
@@ -87,10 +81,7 @@ pub fn validate_mutation_target(
 }
 
 /// Validate that the dialect supports the features used in the request.
-pub fn validate_dialect_support(
-    request: &ApiRequest,
-    dialect: &Dialect,
-) -> Result<(), Error> {
+pub fn validate_dialect_support(request: &ApiRequest, dialect: &Dialect) -> Result<(), Error> {
     // Reject RPC calls on backends without routine support
     if request.is_rpc && !dialect.has_routines {
         return Err(Error::Unsupported(

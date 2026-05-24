@@ -181,10 +181,9 @@ mod tests {
             if let LogicNode::Filter(f) = &items[0] {
                 assert_eq!(f.operator, Operator::In);
                 match &f.value {
-                    FilterValue::List(v) => assert_eq!(
-                        v,
-                        &vec!["1".to_string(), "2".to_string(), "3".to_string()]
-                    ),
+                    FilterValue::List(v) => {
+                        assert_eq!(v, &vec!["1".to_string(), "2".to_string(), "3".to_string()])
+                    }
                     _ => panic!("expected List, got {:?}", f.value),
                 }
             } else {

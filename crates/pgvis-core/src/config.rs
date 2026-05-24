@@ -167,7 +167,6 @@ impl Default for RoutingConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     // --- Schema selection ---
-
     /// Which schemas to expose as API endpoints.
     ///
     /// Tables, views, and functions in these schemas become REST routes and
@@ -184,7 +183,6 @@ pub struct Config {
     pub extra_search_path: Vec<String>,
 
     // --- Authentication ---
-
     /// JWT secret for token verification.
     ///
     /// If `None`, JWT verification is disabled (all requests are anonymous).
@@ -217,7 +215,6 @@ pub struct Config {
     pub role_claim_key: String,
 
     // --- Feature gates ---
-
     /// Whether aggregate functions (`sum`, `avg`, etc.) are enabled in `select`.
     ///
     /// Disabled by default (matching PostgREST) because aggregates can be
@@ -254,7 +251,6 @@ pub struct Config {
     pub tx_rollback_all: bool,
 
     // --- Query limits ---
-
     /// Maximum number of rows returned per request (0 = unlimited).
     ///
     /// Acts as a server-side cap on `limit`. When a client requests more rows
@@ -283,7 +279,6 @@ pub struct Config {
     pub read_only: bool,
 
     // --- Connection pool ---
-
     /// Maximum number of database connections in the pool.
     ///
     /// Each concurrent request holds one connection for its transaction duration.
@@ -300,7 +295,6 @@ pub struct Config {
     pub pool_timeout_ms: u64,
 
     // --- Hooks ---
-
     /// Pre-request function to call before every query.
     ///
     /// Called after JWT verification and role switching, before the main query.
@@ -310,7 +304,6 @@ pub struct Config {
     pub pre_request: Option<String>,
 
     // --- OpenAPI ---
-
     /// OpenAPI document title.
     pub openapi_title: Option<String>,
 
@@ -326,7 +319,6 @@ pub struct Config {
     pub openapi_mode: OpenApiMode,
 
     // --- Routing ---
-
     /// URL routing and namespace configuration.
     ///
     /// Controls route URL structure and MCP tool naming.

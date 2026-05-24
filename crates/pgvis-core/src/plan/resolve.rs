@@ -6,10 +6,7 @@
 use crate::cache::{Cardinality, QualifiedIdentifier, Relationship, SchemaCache, Table};
 use crate::dialect::Dialect;
 use crate::error::{Error, ErrorCode};
-use crate::query_params::types::{
-    Filter, LogicNode, LogicTree, Operator, OrderTerm,
-    RangeSpec,
-};
+use crate::query_params::types::{Filter, LogicNode, LogicTree, Operator, OrderTerm, RangeSpec};
 use crate::select_ast::{FieldSelect, RelationSelect, SelectItem, SpreadSelect};
 
 use super::planner::PlanConfig;
@@ -190,7 +187,8 @@ pub fn resolve_embed(
     // 3. Deduplicate by constraint name (same FK appears as both M2O and inverse O2M)
     //    Prefer the entry where source_table == parent (forward direction)
     let deduped: Vec<&Relationship> = {
-        let mut seen_constraints: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        let mut seen_constraints: std::collections::HashSet<&str> =
+            std::collections::HashSet::new();
         let mut result: Vec<&Relationship> = Vec::new();
         // First pass: add forward matches (source == parent)
         for r in &matching {
@@ -425,10 +423,8 @@ fn disambiguate_relationship<'a>(
                     return Ok(rel);
                 }
             }
-            let constraint_names: Vec<&str> = matches
-                .iter()
-                .map(|r| r.constraint_name.as_str())
-                .collect();
+            let constraint_names: Vec<&str> =
+                matches.iter().map(|r| r.constraint_name.as_str()).collect();
             Err(Error::ambiguous_relationship(
                 source,
                 target,

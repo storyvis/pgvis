@@ -352,8 +352,7 @@ mod tests {
 
     #[test]
     fn parse_multiple() {
-        let (prefs, unknown) =
-            Preferences::parse("return=minimal, count=exact, handling=strict");
+        let (prefs, unknown) = Preferences::parse("return=minimal, count=exact, handling=strict");
         assert_eq!(prefs.return_repr, Some(PreferReturn::Minimal));
         assert_eq!(prefs.count, Some(PreferCount::Exact));
         assert_eq!(prefs.handling, Some(PreferHandling::Strict));

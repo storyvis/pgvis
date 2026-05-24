@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{assert_json, setup_test_db, test_dsn, PgvisServer};
+use common::{PgvisServer, assert_json, setup_test_db, test_dsn};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::sync::OnceLock;
@@ -45,10 +45,7 @@ fn server_info() -> &'static ServerInfo {
             .pool_max_idle_per_host(0)
             .build()
             .unwrap();
-        ServerInfo {
-            client,
-            base_url,
-        }
+        ServerInfo { client, base_url }
     })
 }
 
@@ -83,7 +80,13 @@ async fn test_get_all_users() {
 #[tokio::test]
 async fn test_get_returns_json_content_type() {
     let resp = get("/api/test/items").await;
-    let ct = resp.headers().get("content-type").unwrap().to_str().unwrap().to_string();
+    let ct = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
     assert_json(resp, StatusCode::OK).await;
     assert!(
         ct.contains("application/json"),
@@ -114,15 +117,14 @@ async fn test_get_returns_content_range() {
 
 #[tokio::test]
 async fn test_select_single_column() {
-    let body = assert_json(
-        get("/api/test/items?select=name").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?select=name").await, StatusCode::OK).await;
     let first = &body[0];
     assert!(first.get("name").is_some(), "should have 'name' field");
     assert!(first.get("id").is_none(), "should NOT have 'id' field");
-    assert!(first.get("price").is_none(), "should NOT have 'price' field");
+    assert!(
+        first.get("price").is_none(),
+        "should NOT have 'price' field"
+    );
 }
 
 #[tokio::test]
@@ -142,11 +144,7 @@ async fn test_select_multiple_columns() {
 
 #[tokio::test]
 async fn test_select_star() {
-    let body = assert_json(
-        get("/api/test/items?select=*").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?select=*").await, StatusCode::OK).await;
     let first = &body[0];
     // Star should return all columns
     assert!(first.get("id").is_some());
@@ -161,11 +159,7 @@ async fn test_select_star() {
 
 #[tokio::test]
 async fn test_filter_eq_text() {
-    let body = assert_json(
-        get("/api/test/items?name=eq.Widget").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?name=eq.Widget").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["name"], "Widget");
@@ -173,11 +167,7 @@ async fn test_filter_eq_text() {
 
 #[tokio::test]
 async fn test_filter_eq_integer() {
-    let body = assert_json(
-        get("/api/test/items?id=eq.3").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?id=eq.3").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["id"], 3);
@@ -197,11 +187,7 @@ async fn test_filter_eq_no_match() {
 
 #[tokio::test]
 async fn test_filter_neq() {
-    let body = assert_json(
-        get("/api/test/items?name=neq.Widget").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?name=neq.Widget").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 9, "neq should exclude Widget, leaving 9");
 }
@@ -212,11 +198,7 @@ async fn test_filter_neq() {
 
 #[tokio::test]
 async fn test_filter_gt() {
-    let body = assert_json(
-        get("/api/test/items?price=gt.100").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?price=gt.100").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     for item in arr {
         let price = item["price"].as_f64().unwrap();
@@ -227,11 +209,7 @@ async fn test_filter_gt() {
 
 #[tokio::test]
 async fn test_filter_gte() {
-    let body = assert_json(
-        get("/api/test/items?price=gte.99.99").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?price=gte.99.99").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     for item in arr {
         let price = item["price"].as_f64().unwrap();
@@ -241,11 +219,7 @@ async fn test_filter_gte() {
 
 #[tokio::test]
 async fn test_filter_lt() {
-    let body = assert_json(
-        get("/api/test/items?price=lt.5").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?price=lt.5").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     for item in arr {
         let price = item["price"].as_f64().unwrap();
@@ -255,11 +229,7 @@ async fn test_filter_lt() {
 
 #[tokio::test]
 async fn test_filter_lte() {
-    let body = assert_json(
-        get("/api/test/items?price=lte.9.99").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?price=lte.9.99").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     for item in arr {
         let price = item["price"].as_f64().unwrap();
@@ -285,11 +255,7 @@ async fn test_filter_like() {
 
 #[tokio::test]
 async fn test_filter_like_prefix() {
-    let body = assert_json(
-        get("/api/test/items?name=like.Wid*").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?name=like.Wid*").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["name"], "Widget");
@@ -487,11 +453,7 @@ async fn test_order_multiple_columns() {
 
 #[tokio::test]
 async fn test_limit() {
-    let body = assert_json(
-        get("/api/test/items?limit=3").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?limit=3").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 3);
 }
@@ -564,11 +526,7 @@ async fn test_select_with_filter_and_order() {
 
 #[tokio::test]
 async fn test_empty_table() {
-    let body = assert_json(
-        get("/api/test/empty_table").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/empty_table").await, StatusCode::OK).await;
     assert_eq!(body, json!([]));
 }
 
@@ -578,11 +536,7 @@ async fn test_empty_table() {
 
 #[tokio::test]
 async fn test_unicode_data() {
-    let body = assert_json(
-        get("/api/test/unicode_data").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/unicode_data").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 4);
     assert!(arr.iter().any(|r| r["label"] == "日本語テスト"));
@@ -607,11 +561,7 @@ async fn test_unicode_filter() {
 
 #[tokio::test]
 async fn test_null_values_included_in_response() {
-    let body = assert_json(
-        get("/api/test/nullable_cols?id=eq.3").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/nullable_cols?id=eq.3").await, StatusCode::OK).await;
     let row = &body[0];
     assert_eq!(row["required_col"], "all_null");
     assert!(row["optional_col"].is_null());
@@ -625,11 +575,7 @@ async fn test_null_values_included_in_response() {
 
 #[tokio::test]
 async fn test_view_query() {
-    let body = assert_json(
-        get("/api/test/items_view").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items_view").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 10);
     // View only has id, name, price, category, in_stock
@@ -641,11 +587,7 @@ async fn test_view_query() {
 
 #[tokio::test]
 async fn test_view_with_filter() {
-    let body = assert_json(
-        get("/api/test/expensive_items").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/expensive_items").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     for item in arr {
         assert!(item["price"].as_f64().unwrap() > 50.0);
@@ -721,11 +663,7 @@ async fn test_compound_pk_filter() {
 
 #[tokio::test]
 async fn test_no_pk_table() {
-    let body = assert_json(
-        get("/api/test/no_pk").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/no_pk").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 3);
 }
@@ -774,11 +712,7 @@ async fn test_nonexistent_column_filter() {
 
 #[tokio::test]
 async fn test_numeric_filter_float() {
-    let body = assert_json(
-        get("/api/test/items?price=eq.9.99").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/items?price=eq.9.99").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["name"], "Widget");
@@ -786,11 +720,7 @@ async fn test_numeric_filter_float() {
 
 #[tokio::test]
 async fn test_integer_filter_range() {
-    let body = assert_json(
-        get("/api/test/users?age=gte.30").await,
-        StatusCode::OK,
-    )
-    .await;
+    let body = assert_json(get("/api/test/users?age=gte.30").await, StatusCode::OK).await;
     let arr = body.as_array().unwrap();
     for user in arr {
         assert!(user["age"].as_i64().unwrap() >= 30);

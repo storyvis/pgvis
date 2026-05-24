@@ -14,8 +14,7 @@ export default defineConfig({
       description:
         "Turn any Postgres database into MCP tools, a PostgREST-compatible REST API, and an OpenAPI 3.0 spec — from one I/O-free Rust engine.",
       logo: {
-        light: "./src/assets/logo-light.svg",
-        dark: "./src/assets/logo-dark.svg",
+        src: "./src/assets/app-icon-indigo.svg",
         replacesTitle: false,
       },
       social: [
@@ -62,7 +61,7 @@ export default defineConfig({
         },
         {
           tag: "link",
-          attrs: { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+          attrs: { rel: "icon", type: "image/svg+xml", href: "/app-icon-indigo.svg" },
         },
       ],
     }),

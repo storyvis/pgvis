@@ -226,12 +226,11 @@ fn execute_and_collect(
         body: Value::Array(body),
         total_count: None, // SQLite doesn't support estimated count
         page_total: Some(page_total),
-        response_status: None,    // No GUC mechanism
-        response_headers: None,   // No GUC mechanism
-        was_insert: None,         // No GUC mechanism
+        response_status: None,  // No GUC mechanism
+        response_headers: None, // No GUC mechanism
+        was_insert: None,       // No GUC mechanism
     })
 }
-
 
 // ===========================================================================
 // Tests
@@ -257,11 +256,7 @@ mod tests {
 
     #[test]
     fn test_json_to_rusqlite_number() {
-        let params = vec![
-            Value::from(42),
-            Value::from(3.14),
-            Value::from(i64::MAX),
-        ];
+        let params = vec![Value::from(42), Value::from(3.14), Value::from(i64::MAX)];
         let converted = json_to_rusqlite_params(&params);
         assert_eq!(converted.len(), 3);
     }
@@ -319,7 +314,10 @@ mod tests {
     fn test_column_to_json_text_as_jsonb() {
         let json_str = r#"[1,2,3]"#;
         let val = column_to_json(ValueRef::Text(json_str.as_bytes()), Some("JSONB"));
-        assert_eq!(val, Value::Array(vec![Value::from(1), Value::from(2), Value::from(3)]));
+        assert_eq!(
+            val,
+            Value::Array(vec![Value::from(1), Value::from(2), Value::from(3)])
+        );
     }
 
     #[test]

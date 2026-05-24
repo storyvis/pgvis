@@ -6,7 +6,7 @@
 use pgvis_core::backend::{Backend, ExecContext};
 use pgvis_core::cache::{Routine, Table};
 use pgvis_core::config::RoutingConfig;
-use pgvis_core::plan::{plan_request, ActionPlan, ApiRequest, RequestBody, RequestMethod};
+use pgvis_core::plan::{ActionPlan, ApiRequest, RequestBody, RequestMethod, plan_request};
 use pgvis_core::preferences::{PreferCount, PreferResolution, PreferReturn, Preferences};
 use pgvis_core::query;
 use pgvis_core::query_params;
@@ -102,7 +102,11 @@ pub fn build_mcp_resources(cache: &SchemaCache, config: &Config) -> Vec<McpResou
 
     for schema in &config.schemas {
         // Per-schema resource
-        let table_count = cache.tables.values().filter(|t| t.schema() == schema).count();
+        let table_count = cache
+            .tables
+            .values()
+            .filter(|t| t.schema() == schema)
+            .count();
         let routine_count: usize = cache
             .routines
             .values()
@@ -261,9 +265,7 @@ pub async fn handle_tool_call(
         .map(String::from);
 
     let limit = args.and_then(|a| a.get("limit")).and_then(|v| v.as_u64());
-    let offset = args
-        .and_then(|a| a.get("offset"))
-        .and_then(|v| v.as_u64());
+    let offset = args.and_then(|a| a.get("offset")).and_then(|v| v.as_u64());
 
     let range = if limit.is_some() || offset.is_some() {
         Some(RangeSpec { limit, offset })
@@ -698,9 +700,7 @@ fn parse_tool_name<'a>(
 ///
 /// Supports the PostgREST filter syntax: `"op.value"` or `"not.op.value"`.
 /// Examples: `"eq.5"`, `"not.eq.5"`, `"gt.10"`, `"like.*foo*"`, `"is.null"`.
-fn parse_mcp_filters(
-    args: Option<&serde_json::Map<String, serde_json::Value>>,
-) -> Vec<Filter> {
+fn parse_mcp_filters(args: Option<&serde_json::Map<String, serde_json::Value>>) -> Vec<Filter> {
     let mut filters = Vec::new();
     if let Some(filter_obj) = args
         .and_then(|a| a.get("filters"))
@@ -789,7 +789,9 @@ fn parse_mcp_select(s: &str) -> Vec<SelectItem> {
 /// { "or": "(status.eq.active,status.eq.pending)" }
 /// { "and": "(age.gte.18,age.lte.65)" }
 /// ```
-fn parse_mcp_logic_filters(args: Option<&serde_json::Map<String, serde_json::Value>>) -> Vec<LogicTree> {
+fn parse_mcp_logic_filters(
+    args: Option<&serde_json::Map<String, serde_json::Value>>,
+) -> Vec<LogicTree> {
     let mut trees = Vec::new();
     let args = match args {
         Some(a) => a,
@@ -904,4 +906,3 @@ fn parse_mcp_order(args: Option<&serde_json::Map<String, serde_json::Value>>) ->
         })
         .collect()
 }
-

@@ -12,8 +12,8 @@
 use pgvis_core::backend::{ExecContext, QueryResult, TxEnd};
 use pgvis_core::error::Error;
 use serde_json::Value;
-use tokio_postgres::types::{IsNull, ToSql, Type};
 use tokio_postgres::Client;
+use tokio_postgres::types::{IsNull, ToSql, Type};
 
 // ---------------------------------------------------------------------------
 // TextParam — sends all values as text for Postgres to coerce
@@ -47,17 +47,15 @@ impl ToSql for TextParam<'_> {
                 // Try native numeric encoding first, with bounds checking
                 if *ty == Type::INT2 {
                     if let Some(i) = n.as_i64() {
-                        let v = i16::try_from(i).map_err(|_| {
-                            format!("value {i} out of range for type smallint")
-                        })?;
+                        let v = i16::try_from(i)
+                            .map_err(|_| format!("value {i} out of range for type smallint"))?;
                         return v.to_sql(ty, out);
                     }
                 }
                 if *ty == Type::INT4 {
                     if let Some(i) = n.as_i64() {
-                        let v = i32::try_from(i).map_err(|_| {
-                            format!("value {i} out of range for type integer")
-                        })?;
+                        let v = i32::try_from(i)
+                            .map_err(|_| format!("value {i} out of range for type integer"))?;
                         return v.to_sql(ty, out);
                     }
                 }
@@ -211,7 +209,11 @@ fn encode_numeric_str(
     // then chunk into groups of 4.
 
     // Integer groups
-    let int_pad = if int_len == 0 { 0 } else { (4 - int_len % 4) % 4 };
+    let int_pad = if int_len == 0 {
+        0
+    } else {
+        (4 - int_len % 4) % 4
+    };
     let int_groups: Vec<i16> = if int_len == 0 {
         vec![]
     } else {
@@ -325,7 +327,11 @@ pub async fn execute_query(
         Ok(_) => matches!(ctx.tx_end, Some(TxEnd::Rollback)),
     };
 
-    let end_sql = if should_rollback { "ROLLBACK" } else { "COMMIT" };
+    let end_sql = if should_rollback {
+        "ROLLBACK"
+    } else {
+        "COMMIT"
+    };
     if let Err(tx_err) = client.batch_execute(end_sql).await {
         tracing::error!(error = %tx_err, command = end_sql, "transaction end failed");
         // If the original result was Ok but COMMIT failed, return the commit error
@@ -483,8 +489,7 @@ fn extract_cte_result(rows: &[tokio_postgres::Row]) -> Result<QueryResult, Error
 
     // body — json_agg result. With `with-serde_json-1` feature, tokio-postgres
     // can directly deserialize json/jsonb columns to serde_json::Value.
-    let body: Value = try_get_column(row, "body")
-        .unwrap_or(Value::Array(vec![]));
+    let body: Value = try_get_column(row, "body").unwrap_or(Value::Array(vec![]));
 
     // page_total
     let page_total: Option<i64> = try_get_column(row, "page_total");
@@ -500,9 +505,7 @@ fn extract_cte_result(rows: &[tokio_postgres::Row]) -> Result<QueryResult, Error
 
     // response_headers — from GUC current_setting('response.headers', true)
     let response_headers_str: Option<String> = try_get_column(row, "response_headers");
-    let response_headers = response_headers_str
-        .as_deref()
-        .and_then(parse_guc_headers);
+    let response_headers = response_headers_str.as_deref().and_then(parse_guc_headers);
 
     Ok(QueryResult {
         body,
@@ -573,9 +576,7 @@ fn execution_error(context: &str, e: &tokio_postgres::Error) -> Error {
     Error::Execution {
         message: format!("{context}: {e}"),
         db_code: e.code().map(|c| c.code().to_string()),
-        detail: e
-            .as_db_error()
-            .and_then(|db| db.detail().map(String::from)),
+        detail: e.as_db_error().and_then(|db| db.detail().map(String::from)),
         hint: e.as_db_error().and_then(|db| db.hint().map(String::from)),
     }
 }

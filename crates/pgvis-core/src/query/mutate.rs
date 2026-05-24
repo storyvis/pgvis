@@ -5,8 +5,8 @@
 
 use serde_json::Value;
 
-use super::fragment;
 use super::RenderContext;
+use super::fragment;
 use crate::error::Error;
 use crate::plan::types::{ConflictResolution, MutatePlan, MutationType, RequestBody};
 
@@ -60,9 +60,7 @@ fn render_insert(
         let placeholders: Vec<String> = columns
             .iter()
             .map(|col| {
-                let val = obj
-                    .and_then(|o| o.get(col).cloned())
-                    .unwrap_or(Value::Null);
+                let val = obj.and_then(|o| o.get(col).cloned()).unwrap_or(Value::Null);
                 ctx.push_param(val)
             })
             .collect();
@@ -91,8 +89,11 @@ fn render_insert(
 
     // ON CONFLICT clause (upsert)
     if let Some(conflict) = on_conflict {
-        let conflict_cols: Vec<String> =
-            conflict.columns.iter().map(|c| ctx.quote_ident(c)).collect();
+        let conflict_cols: Vec<String> = conflict
+            .columns
+            .iter()
+            .map(|c| ctx.quote_ident(c))
+            .collect();
         let conflict_sql = conflict_cols.join(", ");
 
         match conflict.resolution {
@@ -101,13 +102,7 @@ fn render_insert(
                 let set_clauses: Vec<String> = columns
                     .iter()
                     .filter(|c| !conflict.columns.contains(c))
-                    .map(|c| {
-                        format!(
-                            "{} = EXCLUDED.{}",
-                            ctx.quote_ident(c),
-                            ctx.quote_ident(c)
-                        )
-                    })
+                    .map(|c| format!("{} = EXCLUDED.{}", ctx.quote_ident(c), ctx.quote_ident(c)))
                     .collect();
 
                 if set_clauses.is_empty() {
@@ -149,9 +144,7 @@ fn render_update(
     let set_clauses: Vec<String> = columns
         .iter()
         .map(|c| {
-            let val = obj
-                .and_then(|o| o.get(c).cloned())
-                .unwrap_or(Value::Null);
+            let val = obj.and_then(|o| o.get(c).cloned()).unwrap_or(Value::Null);
             let placeholder = ctx.push_param(val);
             format!("{} = {placeholder}", ctx.quote_ident(c))
         })
@@ -160,12 +153,9 @@ fn render_update(
     let mut sql = format!("UPDATE {table_ref} SET {}", set_clauses.join(", "));
 
     // WHERE clause
-    if let Some(wc) = fragment::render_where_clause(
-        &plan.filters,
-        &plan.logic_filters,
-        Some(table_alias),
-        ctx,
-    ) {
+    if let Some(wc) =
+        fragment::render_where_clause(&plan.filters, &plan.logic_filters, Some(table_alias), ctx)
+    {
         sql.push_str(" WHERE ");
         sql.push_str(&wc);
     }
@@ -188,12 +178,9 @@ fn render_delete(
     let mut sql = format!("DELETE FROM {table_ref}");
 
     // WHERE clause
-    if let Some(wc) = fragment::render_where_clause(
-        &plan.filters,
-        &plan.logic_filters,
-        Some(table_alias),
-        ctx,
-    ) {
+    if let Some(wc) =
+        fragment::render_where_clause(&plan.filters, &plan.logic_filters, Some(table_alias), ctx)
+    {
         sql.push_str(" WHERE ");
         sql.push_str(&wc);
     }
@@ -222,9 +209,7 @@ fn append_returning(sql: &mut String, _plan: &MutatePlan, ctx: &RenderContext<'_
 // ---------------------------------------------------------------------------
 
 /// Extract body objects as a Vec of serde_json Maps.
-fn extract_body_objects(
-    body: &Option<RequestBody>,
-) -> Vec<&serde_json::Map<String, Value>> {
+fn extract_body_objects(body: &Option<RequestBody>) -> Vec<&serde_json::Map<String, Value>> {
     match body {
         Some(RequestBody::Single(obj)) => {
             if let Some(map) = obj.as_object() {
@@ -233,10 +218,7 @@ fn extract_body_objects(
                 vec![]
             }
         }
-        Some(RequestBody::Bulk(arr)) => arr
-            .iter()
-            .filter_map(|v| v.as_object())
-            .collect(),
+        Some(RequestBody::Bulk(arr)) => arr.iter().filter_map(|v| v.as_object()).collect(),
         _ => vec![],
     }
 }

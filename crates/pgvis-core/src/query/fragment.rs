@@ -4,8 +4,8 @@
 //! `read.rs`, `mutate.rs`, and `call.rs` to avoid duplication.
 
 use crate::plan::types::{
-    FilterRewrite, ResolvedFilter, ResolvedLogicNode, ResolvedLogicTree,
-    ResolvedOrder, ResolvedSelect,
+    FilterRewrite, ResolvedFilter, ResolvedLogicNode, ResolvedLogicTree, ResolvedOrder,
+    ResolvedSelect,
 };
 use crate::query_params::types::{FilterValue, IsKind, NullsOrder, Operator, OrderDirection};
 use crate::select_ast::{JsonOperand, JsonOperation};
@@ -131,9 +131,7 @@ fn render_rewritten_filter(
         }
         FilterRewrite::JsonArrayContains => {
             // @> → EXISTS (SELECT 1 FROM json_each(col) WHERE value = ?)
-            format!(
-                "{negation}EXISTS (SELECT 1 FROM json_each({col}) WHERE value = {placeholder})"
-            )
+            format!("{negation}EXISTS (SELECT 1 FROM json_each({col}) WHERE value = {placeholder})")
         }
         FilterRewrite::JsonExtractFunction => {
             // -> / ->> → json_extract()
@@ -310,13 +308,11 @@ pub fn render_select_list(
     let items: Vec<String> = selects
         .iter()
         .filter_map(|sel| match sel {
-            ResolvedSelect::Star => {
-                Some(if let Some(alias) = table_alias {
-                    format!("{}.*", ctx.quote_ident(alias))
-                } else {
-                    "*".to_string()
-                })
-            }
+            ResolvedSelect::Star => Some(if let Some(alias) = table_alias {
+                format!("{}.*", ctx.quote_ident(alias))
+            } else {
+                "*".to_string()
+            }),
             ResolvedSelect::Column(col) => {
                 let mut expr = qualified_column(table_alias, &col.name, ctx);
 
@@ -404,9 +400,7 @@ pub fn render_group_by(
     let group_cols: Vec<String> = selects
         .iter()
         .filter_map(|s| match s {
-            ResolvedSelect::Column(col) => {
-                Some(qualified_column(table_alias, &col.name, ctx))
-            }
+            ResolvedSelect::Column(col) => Some(qualified_column(table_alias, &col.name, ctx)),
             _ => None,
         })
         .collect();
@@ -427,10 +421,7 @@ pub fn render_group_by(
 /// Uses literal numbers instead of parameters because:
 /// 1. LIMIT/OFFSET don't support implicit TEXT→BIGINT coercion in Postgres
 /// 2. These values are system-generated from Range header parsing, not user input
-pub fn render_limit_offset(
-    limit: Option<u64>,
-    offset: Option<u64>,
-) -> Option<String> {
+pub fn render_limit_offset(limit: Option<u64>, offset: Option<u64>) -> Option<String> {
     match (limit, offset) {
         (Some(l), Some(o)) => Some(format!("LIMIT {l} OFFSET {o}")),
         (Some(l), None) => Some(format!("LIMIT {l}")),

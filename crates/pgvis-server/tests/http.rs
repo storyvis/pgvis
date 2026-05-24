@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{setup_test_db, test_dsn, PgvisServer};
+use common::{PgvisServer, setup_test_db, test_dsn};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::sync::OnceLock;
@@ -354,8 +354,8 @@ async fn test_url_encoded_special_chars() {
 
 #[tokio::test]
 async fn test_combined_select_filter_order_limit() {
-    let resp = get("/api/test/items?select=name,price&category=eq.gadgets&order=price.desc&limit=2")
-        .await;
+    let resp =
+        get("/api/test/items?select=name,price&category=eq.gadgets&order=price.desc&limit=2").await;
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     let arr = body.as_array().unwrap();
@@ -402,6 +402,10 @@ async fn test_concurrent_reads() {
 
     for handle in handles {
         let status = handle.await.unwrap();
-        assert_eq!(status, StatusCode::OK, "concurrent read failed with {status}");
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "concurrent read failed with {status}"
+        );
     }
 }

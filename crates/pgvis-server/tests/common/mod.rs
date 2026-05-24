@@ -8,7 +8,7 @@
 use std::net::TcpListener;
 use std::time::Duration;
 
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, CONTENT_TYPE};
+use reqwest::header::{ACCEPT, CONTENT_TYPE, HeaderMap, HeaderValue};
 use reqwest::{Client, Response, StatusCode};
 use serde_json::Value;
 
@@ -182,7 +182,6 @@ impl PgvisServer {
             .await
             .expect("DELETE request failed")
     }
-
 }
 
 /// Run schema.sql and seed.sql against the test database.
@@ -213,7 +212,10 @@ pub async fn setup_test_db(dsn: &str) {
 
 /// Helper to parse a JSON response body.
 pub async fn json_body(response: Response) -> Value {
-    response.json::<Value>().await.expect("failed to parse JSON body")
+    response
+        .json::<Value>()
+        .await
+        .expect("failed to parse JSON body")
 }
 
 /// Helper to assert response status and return parsed JSON.

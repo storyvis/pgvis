@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 56" fill="none" role="img" aria-label="pgvis">
+  <defs>
+    <linearGradient id="p" x1="14" y1="12" x2="28" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c79f1" />
+      <stop offset="1" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 5)">
+    <line x1="3" y1="24" x2="14" y2="24" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
+    <path d="M 14 12 L 28 24 L 14 36 Z" fill="url(#p)" />
+    <line x1="28" y1="24" x2="44" y2="14" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" />
+    <line x1="28" y1="24" x2="45" y2="24" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" />
+    <line x1="28" y1="24" x2="44" y2="34" stroke="#f472b6" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text
+    x="52" y="41"
+    font-family="Geist, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-weight="700"
+    font-size="42"
+    letter-spacing="-1.26"
+  ><tspan fill="#f5f2eb">pg</tspan><tspan fill="#a78bfa">vis</tspan></text>
+</svg>

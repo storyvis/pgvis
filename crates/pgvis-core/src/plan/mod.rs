@@ -13,5 +13,5 @@ pub mod resolve;
 pub mod types;
 pub mod validate;
 
-pub use planner::{plan_request, PlanConfig};
+pub use planner::{PlanConfig, plan_request};
 pub use types::*;

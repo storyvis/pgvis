@@ -72,7 +72,7 @@ const jsonLd = {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={absoluteOgImage} />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/app-icon-indigo.svg" />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -95,20 +95,11 @@ const jsonLd = {
     <header>
       <nav>
         <a href="/" class="logo" aria-label="pgvis home">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#logo-grad)" />
-            <path d="M8 11h16M8 16h16M8 21h10" stroke="white" stroke-width="2.2" stroke-linecap="round" />
-            <defs>
-              <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#6366f1" />
-                <stop offset="1" stop-color="#8b5cf6" />
-              </linearGradient>
-            </defs>
-          </svg>
+          <img src="/mark-prism.svg" width="32" height="32" alt="" aria-hidden="true" />
           <span>pgvis</span>
         </a>
         <div class="nav-links">
-          <a href="/docs/introduction">Docs</a>
+          <a href="/introduction">Docs</a>
           <a href="/vision">Vision</a>
           <a href="/blog">Blog</a>
           <a
@@ -132,16 +123,7 @@ const jsonLd = {
       <div class="container footer-grid">
         <div class="footer-col">
           <div class="footer-brand">
-            <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#footer-logo-grad)" />
-              <path d="M8 11h16M8 16h16M8 21h10" stroke="white" stroke-width="2.2" stroke-linecap="round" />
-              <defs>
-                <linearGradient id="footer-logo-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#6366f1" />
-                  <stop offset="1" stop-color="#8b5cf6" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <img src="/mark-prism.svg" width="28" height="28" alt="" aria-hidden="true" />
             <span>pgvis</span>
           </div>
           <p>Postgres → MCP, REST, OpenAPI — from one Rust engine.</p>
@@ -151,27 +133,15 @@ const jsonLd = {
         </div>
         <div class="footer-col">
           <h4>Product</h4>
-          <a href="/docs/introduction">Documentation</a>
-          <a href="/docs/quickstart">Quick Start</a>
-          <a href="/docs/reference/architecture">Architecture</a>
+          <a href="/introduction">Documentation</a>
+          <a href="/quickstart">Quick Start</a>
+          <a href="/reference/architecture">Architecture</a>
         </div>
         <div class="footer-col">
           <h4>Community</h4>
           <a href="https://github.com/storyvis/pgvis" rel="noopener">GitHub</a>
           <a href="https://github.com/storyvis/pgvis/issues" rel="noopener">Issues</a>
           <a href="/blog">Blog</a>
-        </div>
-        <div class="footer-col">
-          <h4>Company</h4>
-          <a href="https://storyvis.ai" rel="noopener">Storyvis AI</a>
-          <a href="/vision">Vision &amp; Roadmap</a>
-          <a href="https://github.com/storyvis" rel="noopener">GitHub org</a>
-        </div>
-        <div class="footer-col">
-          <h4>Resources</h4>
-          <a href="https://modelcontextprotocol.io" rel="noopener">Model Context Protocol</a>
-          <a href="https://postgrest.org" rel="noopener">PostgREST</a>
-          <a href="https://github.com/storyvis/pgvis/blob/main/LICENSE" rel="noopener">License</a>
         </div>
       </div>
       <div class="footer-bottom container">

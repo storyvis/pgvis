@@ -3,8 +3,8 @@
 //! Queries `sqlite_master` and PRAGMAs to discover tables, columns, relationships,
 //! and unique constraints. Assembles results into a [`SchemaCache`].
 
-pub mod tables;
 pub mod relationships;
+pub mod tables;
 
 use pgvis_core::backend::IntrospectConfig;
 use pgvis_core::cache::SchemaCache;

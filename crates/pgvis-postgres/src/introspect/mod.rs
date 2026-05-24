@@ -5,10 +5,10 @@
 //!
 //! Ported from PostgREST's `SchemaCache.hs`.
 
-pub mod tables;
 pub mod relationships;
-pub mod routines;
 pub mod representations;
+pub mod routines;
+pub mod tables;
 
 use pgvis_core::backend::IntrospectConfig;
 use pgvis_core::cache::SchemaCache;
@@ -96,10 +96,7 @@ pub async fn load_schema_cache(
 }
 
 /// Inner implementation that runs inside the transaction opened by [`load_schema_cache`].
-async fn run_introspection(
-    client: &Client,
-    cfg: &IntrospectConfig,
-) -> Result<SchemaCache, Error> {
+async fn run_introspection(client: &Client, cfg: &IntrospectConfig) -> Result<SchemaCache, Error> {
     let schemas: &[String] = &cfg.schemas;
 
     info!(schemas = ?cfg.schemas, "introspecting database schema");

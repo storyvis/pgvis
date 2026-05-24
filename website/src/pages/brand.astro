@@ -1,0 +1,1091 @@
+---
+// pgvis brand & design system reference.
+// All 11 cards extracted from final-pack.jsx, rendered statically.
+
+import Layout from "../layouts/Landing.astro";
+
+const C = {
+  ink: "#0b0b14",
+  muted: "#94a3b8",
+  paper: "#f5f2eb",
+  accent: "#4f46e5",
+};
+
+// Lockup scale rows for the "Lockup at 5 sizes" card.
+const lockupSizes = [
+  { size: 64, label: "64 · hero", height: 120 },
+  { size: 40, label: "40 · nav", height: 86 },
+  { size: 28, label: "28 · inline", height: 66 },
+  { size: 20, label: "20 · footer", height: 56 },
+];
+
+// Mark-only scale row.
+const markSizes = [88, 56, 32, 16];
+
+// Favicon size column.
+const faviconSizes = [128, 64, 32, 24, 16];
+
+// App icon palette set.
+const appIconPalettes = [
+  { key: "indigo", a: "#6366f1", b: "#8b5cf6", paper: false },
+  { key: "ink", a: "#1a1a2e", b: "#0b0b14", paper: false },
+  { key: "paper", a: "#fdfaf3", b: "#f0eada", paper: true },
+];
+
+// Color swatches.
+const brandSwatches = [
+  { color: "#4f46e5", name: "indigo-600", hex: "#4f46e5", fg: "#fff" },
+  { color: "#6366f1", name: "indigo-500", hex: "#6366f1", fg: "#fff" },
+  { color: "#8b5cf6", name: "violet-500", hex: "#8b5cf6", fg: "#fff" },
+  { color: "#a78bfa", name: "violet-400", hex: "#a78bfa", fg: "#fff" },
+  { color: "#0b0b14", name: "ink", hex: "#0b0b14", fg: "#fff" },
+  { color: "#f5f2eb", name: "paper", hex: "#f5f2eb", fg: "#0b0b14" },
+];
+
+const raySwatches = [
+  { color: "#22d3ee", name: "cyan-400 · ray-1", hex: "#22d3ee", fg: "#0b0b14" },
+  { color: "#a78bfa", name: "violet-400 · ray-2", hex: "#a78bfa", fg: "#fff" },
+  { color: "#f472b6", name: "pink-400 · ray-3", hex: "#f472b6", fg: "#fff" },
+];
+
+const dontsItems = [
+  { label: "Don't rotate", style: "transform:rotate(-12deg)", size: 32 },
+  { label: "Don't stretch", style: "transform:scaleX(1.6)", size: 28 },
+  { label: "Don't recolor 'pg'", style: "", size: 32, recolor: true },
+  { label: "Don't reorder", style: "", size: 32, reverse: true },
+  { label: "Don't lose clear space", style: "", size: 28, crowded: true },
+  { label: "Don't drop on busy bg", style: "", size: 28, busy: true },
+];
+
+const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" aria-label="pgvis">
+  <defs>
+    <linearGradient id="p" x1="14" y1="12" x2="28" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c79f1"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <line x1="3" y1="24" x2="14" y2="24" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 14 12 L 28 24 L 14 36 Z" fill="url(#p)"/>
+  <line x1="28" y1="24" x2="44" y2="14" stroke="#22d3ee" stroke-width="2" stroke-linecap="round"/>
+  <line x1="28" y1="24" x2="45" y2="24" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+  <line x1="28" y1="24" x2="44" y2="34" stroke="#f472b6" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+---
+
+<Layout
+  title="pgvis — Brand & Design System"
+  description="The locked pgvis brand pack: Prism mark, Geist 700 wordmark, indigo palette, app icons, OG card, clear-space spec, misuse don'ts, and the drop-in SVG."
+>
+  <main class="brand-main">
+    <header class="brand-hero">
+      <span class="eyebrow">Brand pack</span>
+      <h1>pgvis identity system</h1>
+      <p>
+        The Prism mark, the Geist 700 wordmark, the indigo / violet palette, and the rules that
+        keep them locked together. Every variant on this page is the source of truth — anything
+        else is a misuse.
+      </p>
+    </header>
+
+    <div class="brand-grid">
+      <!-- 1. Hero lockup -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Primary</div>
+            <h3 class="hat-title">Hero lockup</h3>
+          </div>
+          <p class="hat-blurb">Default usage on light backgrounds. The Prism mark sits left of the wordmark; <code>pg</code> in ink, <code>vis</code> in brand indigo.</p>
+        </div>
+        <div class="frame" style="background:#f5f2eb;height:300px;">
+          <div class="lockup" style="--lockup-size:88px;">
+            <span class="lockup-mark"><Fragment set:html={markSvg.replace('viewBox="0 0 48 48"', 'viewBox="0 0 48 48" width="96.8" height="96.8"').replace(' aria-label="pgvis"', ' aria-hidden="true"')} /></span>
+            <span class="wordmark" style="font-size:88px;"><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+          </div>
+          <div class="frame-label"><span>primary · light</span><span>Prism + Geist 700 · indigo</span></div>
+        </div>
+      </article>
+
+      <!-- 2. Lockup scales -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Scales</div>
+            <h3 class="hat-title">Lockup at four sizes</h3>
+          </div>
+          <p class="hat-blurb">Mark and wordmark stay locked at every size. Minimum lockup size: 20 px wordmark height.</p>
+        </div>
+        <div class="scale-stack">
+          {lockupSizes.map((s) => (
+            <div class="frame" style={`background:#f5f2eb;height:${s.height}px;`}>
+              <div class="lockup" style={`--lockup-size:${s.size}px;`}>
+                <span class="lockup-mark"><Fragment set:html={markSvg.replace('viewBox="0 0 48 48"', `viewBox="0 0 48 48" width="${s.size * 1.1}" height="${s.size * 1.1}"`).replace(' aria-label="pgvis"', ' aria-hidden="true"')} /></span>
+                <span class="wordmark" style={`font-size:${s.size}px;`}><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+              </div>
+              <div class="frame-label"><span>{s.label}</span></div>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <!-- 3. Modes -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Modes</div>
+            <h3 class="hat-title">Light · dark · monochrome</h3>
+          </div>
+          <p class="hat-blurb">Three modes cover everything. Brand-color version is default; monochrome is for single-color print, embossing, or watermarks.</p>
+        </div>
+        <div class="grid-2">
+          <div class="frame" style="background:#f5f2eb;height:140px;">
+            <div class="lockup">
+              <img src="/mark-prism.svg" width="48" height="48" alt="" />
+              <span class="wordmark" style="font-size:44px;"><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+            </div>
+            <div class="frame-label"><span>light · brand</span></div>
+          </div>
+          <div class="frame frame-dark" style="background:#0b0b14;height:140px;">
+            <div class="lockup">
+              <img src="/mark-prism.svg" width="48" height="48" alt="" />
+              <span class="wordmark" style="font-size:44px;"><span style="color:#f5f2eb;">pg</span><span style="color:#a78bfa;">vis</span></span>
+            </div>
+            <div class="frame-label"><span>dark · brand</span></div>
+          </div>
+          <div class="frame" style="background:#f5f2eb;height:140px;">
+            <div class="lockup">
+              <img src="/mark-prism-mono-ink.svg" width="48" height="48" alt="" />
+              <span class="wordmark" style="font-size:44px;color:#0b0b14;">pgvis</span>
+            </div>
+            <div class="frame-label"><span>mono · ink</span></div>
+          </div>
+          <div class="frame frame-dark" style="background:#0b0b14;height:140px;">
+            <div class="lockup">
+              <img src="/mark-prism-mono-paper.svg" width="48" height="48" alt="" />
+              <span class="wordmark" style="font-size:44px;color:#f5f2eb;">pgvis</span>
+            </div>
+            <div class="frame-label"><span>mono · paper</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 4. Mark-only -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Mark only</div>
+            <h3 class="hat-title">Standalone at every size</h3>
+          </div>
+          <p class="hat-blurb">Use the mark alone for avatars, favicons, app icons, watermarks. Minimum standalone size: 16 px.</p>
+        </div>
+        <div class="frame" style="background:#f5f2eb;height:140px;">
+          <div class="mark-row">
+            {markSizes.map((s) => (
+              <img src="/mark-prism.svg" width={s} height={s} alt="" />
+            ))}
+          </div>
+          <div class="frame-label"><span>brand</span></div>
+        </div>
+        <div class="grid-2" style="margin-top:10px;">
+          <div class="frame" style="background:#f5f2eb;height:110px;">
+            <img src="/mark-prism-mono-ink.svg" width="64" height="64" alt="" />
+            <div class="frame-label"><span>mono · ink</span></div>
+          </div>
+          <div class="frame frame-dark" style="background:#0b0b14;height:110px;">
+            <img src="/mark-prism-mono-paper.svg" width="64" height="64" alt="" />
+            <div class="frame-label"><span>mono · paper</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 5. Favicon row -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Favicon</div>
+            <h3 class="hat-title">Browser tab · 16 → 128 px</h3>
+          </div>
+          <p class="hat-blurb">Two flavors: glyph-on-cream (matches site bg) and glyph-in-rounded-tile (app icon). Tile uses the indigo gradient.</p>
+        </div>
+        <div class="favicon-rows">
+          <div class="favicon-label">flat</div>
+          <div class="favicon-row">
+            {faviconSizes.map((s) => (
+              <div class="favicon-cell">
+                <div class="favicon-flat-tile"><img src="/mark-prism.svg" width={s} height={s} alt="" /></div>
+                <div class="favicon-px">{s}</div>
+              </div>
+            ))}
+          </div>
+          <div class="favicon-label">tile</div>
+          <div class="favicon-row">
+            {faviconSizes.map((s) => (
+              <div class="favicon-cell">
+                <img src="/app-icon-indigo.svg" width={s} height={s} alt="" />
+                <div class="favicon-px">{s}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </article>
+
+      <!-- 6. App icons -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">App icon</div>
+            <h3 class="hat-title">Rounded-square tiles</h3>
+          </div>
+          <p class="hat-blurb">For dock / homescreen / store. Three palettes: indigo (primary), ink (system-dark match), paper (alt for light surfaces).</p>
+        </div>
+        <div class="app-icon-row">
+          {appIconPalettes.map((p) => (
+            <div class="app-icon-cell">
+              <img src={`/app-icon-${p.key}.svg`} width="140" height="140" alt="" />
+              <div class="favicon-px">{p.key}</div>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <!-- 7. Clear space -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Spec</div>
+            <h3 class="hat-title">Clear space</h3>
+          </div>
+          <p class="hat-blurb">Reserve at least 1× the prism's height of clear space around the lockup. Marked with <code>x</code> below — never tighter than <code>x</code> on any side.</p>
+        </div>
+        <div class="frame" style="background:#f5f2eb;height:260px;">
+          <div class="clearspace-inner">
+            <div class="clearspace-dashed"></div>
+            <span class="clearspace-x clearspace-tl">x</span>
+            <span class="clearspace-x clearspace-tr">x</span>
+            <span class="clearspace-x clearspace-bl">x</span>
+            <span class="clearspace-x clearspace-br">x</span>
+            <div class="lockup">
+              <img src="/mark-prism.svg" width="62" height="62" alt="" />
+              <span class="wordmark" style="font-size:56px;"><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+            </div>
+          </div>
+          <div class="frame-label"><span>x = prism height</span></div>
+        </div>
+      </article>
+
+      <!-- 8. Color & type tokens -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Tokens</div>
+            <h3 class="hat-title">Color &amp; type</h3>
+          </div>
+          <p class="hat-blurb">Drop-in values for CSS, Tailwind, or design tools. The Prism's rays are intentionally the only place chroma escapes the indigo system.</p>
+        </div>
+        <div class="tokens-section">
+          <div class="tokens-label">Brand</div>
+          <div class="swatch-row">
+            {brandSwatches.map((s) => (
+              <div class="swatch">
+                <div class="swatch-chip" style={`background:${s.color};color:${s.fg};`}>{s.hex}</div>
+                <div class="swatch-name">{s.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="tokens-section">
+          <div class="tokens-label">Prism rays</div>
+          <div class="swatch-row">
+            {raySwatches.map((s) => (
+              <div class="swatch">
+                <div class="swatch-chip" style={`background:${s.color};color:${s.fg};`}>{s.hex}</div>
+                <div class="swatch-name">{s.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="tokens-section">
+          <div class="tokens-label">Type</div>
+          <div class="type-rows">
+            <div><span style="font-family:'Geist',sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.03em;">Geist 700</span> <span class="type-meta">— wordmark · headings</span></div>
+            <div><span style="font-family:'Geist',sans-serif;font-weight:500;font-size:16px;">Geist 400 / 500</span> <span class="type-meta">— body · UI</span></div>
+            <div><span style="font-family:'JetBrains Mono',monospace;font-size:14px;">JetBrains Mono</span> <span class="type-meta">— code · UI mono</span></div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 9. Don'ts -->
+      <article class="card">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Misuse</div>
+            <h3 class="hat-title">Don't do these</h3>
+          </div>
+          <p class="hat-blurb">Six common ways the lockup breaks. Keep proportions, color split, and order intact.</p>
+        </div>
+        <div class="donts-grid">
+          {dontsItems.map((it) => (
+            <div class="donts-cell">
+              <div class="donts-marker">×</div>
+              <div class={`donts-content ${it.busy ? "donts-busy" : ""}`}>
+                {it.reverse ? (
+                  <div class="lockup lockup-reverse" style={`--lockup-size:${it.size}px;${it.style}`}>
+                    <img src="/mark-prism.svg" width={it.size * 1.1} height={it.size * 1.1} alt="" />
+                    <span class="wordmark" style={`font-size:${it.size}px;`}><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+                  </div>
+                ) : it.recolor ? (
+                  <div class="lockup" style={`--lockup-size:${it.size}px;${it.style}`}>
+                    <img src="/mark-prism.svg" width={it.size * 1.1} height={it.size * 1.1} alt="" />
+                    <span class="wordmark" style={`font-size:${it.size}px;`}><span style="color:#22d3ee;">pg</span><span style="color:#f472b6;">vis</span></span>
+                  </div>
+                ) : it.crowded ? (
+                  <div style="background:#cbd5e1;padding:2px;border-radius:4px;">
+                    <div class="lockup" style={`--lockup-size:${it.size}px;${it.style}`}>
+                      <img src="/mark-prism.svg" width={it.size * 1.1} height={it.size * 1.1} alt="" />
+                      <span class="wordmark" style={`font-size:${it.size}px;`}><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="lockup" style={`--lockup-size:${it.size}px;${it.style}`}>
+                    <img src="/mark-prism.svg" width={it.size * 1.1} height={it.size * 1.1} alt="" />
+                    <span class="wordmark" style={`font-size:${it.size}px;`}><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+                  </div>
+                )}
+              </div>
+              <div class="donts-label">{it.label}</div>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <!-- 10. Social / OG card -->
+      <article class="card card-wide">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Social</div>
+            <h3 class="hat-title">OG image · 1200 × 630</h3>
+          </div>
+          <p class="hat-blurb">The card that ships with the site. Mark + wordmark + a one-line description, optical-centered on cream.</p>
+        </div>
+        <div class="og-card">
+          <div class="og-glow og-glow-violet"></div>
+          <div class="og-glow og-glow-cyan"></div>
+          <div class="og-inner">
+            <div class="lockup">
+              <img src="/mark-prism.svg" width="68" height="68" alt="" />
+              <span class="wordmark" style="font-size:62px;"><span style="color:#0b0b14;">pg</span><span style="color:#4f46e5;">vis</span></span>
+            </div>
+            <div class="og-tag">
+              Turn any Postgres database into <span style="color:#4f46e5;">MCP tools</span>,
+              a <span style="color:#8b5cf6;">REST&nbsp;API</span> &amp;
+              <span style="color:#7c3aed;">OpenAPI</span> — from one Rust engine.
+            </div>
+            <div class="og-url">pgvis.io</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 11. Drop-in SVG snippet -->
+      <article class="card card-wide">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Handoff</div>
+            <h3 class="hat-title">Drop-in SVG</h3>
+          </div>
+          <p class="hat-blurb">The locked Prism mark as a single inline SVG. No external deps; viewBox normalized to <code>0 0 48 48</code> so it scales cleanly.</p>
+        </div>
+        <pre class="code-block"><code>{markSvg}</code></pre>
+      </article>
+
+      <!-- 12. Downloads -->
+      <article class="card card-wide">
+        <div class="hat">
+          <div>
+            <div class="hat-section">Downloads</div>
+            <h3 class="hat-title">Brand pack · SVG assets</h3>
+          </div>
+          <p class="hat-blurb">Drop these into slide decks, READMEs, websites, or design tools. Lockups have the Prism mark and <code>pgvis</code> wordmark optically aligned; install Geist 700 on the rendering system for full brand fidelity.</p>
+        </div>
+
+        <div class="downloads-group">
+          <div class="downloads-label">Lockups · mark + wordmark</div>
+          <div class="downloads-grid">
+            <a class="download" href="/lockup-brand.svg" download>
+              <div class="download-preview download-light"><img src="/lockup-brand.svg" alt="pgvis lockup, brand" /></div>
+              <div class="download-meta"><span class="download-name">lockup-brand.svg</span><span class="download-note">light backgrounds</span></div>
+            </a>
+            <a class="download" href="/lockup-dark.svg" download>
+              <div class="download-preview download-dark"><img src="/lockup-dark.svg" alt="pgvis lockup, dark" /></div>
+              <div class="download-meta"><span class="download-name">lockup-dark.svg</span><span class="download-note">dark backgrounds</span></div>
+            </a>
+            <a class="download" href="/lockup-mono-ink.svg" download>
+              <div class="download-preview download-light"><img src="/lockup-mono-ink.svg" alt="pgvis lockup, mono ink" /></div>
+              <div class="download-meta"><span class="download-name">lockup-mono-ink.svg</span><span class="download-note">single-color, light bg</span></div>
+            </a>
+            <a class="download" href="/lockup-mono-paper.svg" download>
+              <div class="download-preview download-dark"><img src="/lockup-mono-paper.svg" alt="pgvis lockup, mono paper" /></div>
+              <div class="download-meta"><span class="download-name">lockup-mono-paper.svg</span><span class="download-note">single-color, dark bg</span></div>
+            </a>
+          </div>
+        </div>
+
+        <div class="downloads-group">
+          <div class="downloads-label">Wordmark only</div>
+          <div class="downloads-grid">
+            <a class="download" href="/wordmark-brand.svg" download>
+              <div class="download-preview download-light"><img src="/wordmark-brand.svg" alt="pgvis wordmark, brand" /></div>
+              <div class="download-meta"><span class="download-name">wordmark-brand.svg</span><span class="download-note">pg ink · vis indigo</span></div>
+            </a>
+            <a class="download" href="/wordmark-ink.svg" download>
+              <div class="download-preview download-light"><img src="/wordmark-ink.svg" alt="pgvis wordmark, ink" /></div>
+              <div class="download-meta"><span class="download-name">wordmark-ink.svg</span><span class="download-note">all ink</span></div>
+            </a>
+            <a class="download" href="/wordmark-paper.svg" download>
+              <div class="download-preview download-dark"><img src="/wordmark-paper.svg" alt="pgvis wordmark, paper" /></div>
+              <div class="download-meta"><span class="download-name">wordmark-paper.svg</span><span class="download-note">all paper</span></div>
+            </a>
+          </div>
+        </div>
+
+        <div class="downloads-group">
+          <div class="downloads-label">Mark only · Prism</div>
+          <div class="downloads-grid">
+            <a class="download" href="/mark-prism.svg" download>
+              <div class="download-preview download-light"><img src="/mark-prism.svg" width="64" height="64" alt="Prism mark, brand" /></div>
+              <div class="download-meta"><span class="download-name">mark-prism.svg</span><span class="download-note">brand gradient</span></div>
+            </a>
+            <a class="download" href="/mark-prism-mono-ink.svg" download>
+              <div class="download-preview download-light"><img src="/mark-prism-mono-ink.svg" width="64" height="64" alt="Prism mark, mono ink" /></div>
+              <div class="download-meta"><span class="download-name">mark-prism-mono-ink.svg</span><span class="download-note">single-color ink</span></div>
+            </a>
+            <a class="download" href="/mark-prism-mono-paper.svg" download>
+              <div class="download-preview download-dark"><img src="/mark-prism-mono-paper.svg" width="64" height="64" alt="Prism mark, mono paper" /></div>
+              <div class="download-meta"><span class="download-name">mark-prism-mono-paper.svg</span><span class="download-note">single-color paper</span></div>
+            </a>
+          </div>
+        </div>
+
+        <div class="downloads-group">
+          <div class="downloads-label">OG image · social card 1200 × 630</div>
+          <div class="downloads-grid">
+            <a class="download download-og" href="/og-image.svg" download>
+              <div class="download-preview download-light"><img src="/og-image.svg" alt="pgvis social card" /></div>
+              <div class="download-meta"><span class="download-name">og-image.svg</span><span class="download-note">Twitter / LinkedIn / Slack preview</span></div>
+            </a>
+          </div>
+        </div>
+
+        <div class="downloads-group">
+          <div class="downloads-label">App icons · rounded tiles 96 × 96</div>
+          <div class="downloads-grid">
+            <a class="download" href="/app-icon-indigo.svg" download>
+              <div class="download-preview"><img src="/app-icon-indigo.svg" width="96" height="96" alt="App icon, indigo" /></div>
+              <div class="download-meta"><span class="download-name">app-icon-indigo.svg</span><span class="download-note">primary</span></div>
+            </a>
+            <a class="download" href="/app-icon-ink.svg" download>
+              <div class="download-preview"><img src="/app-icon-ink.svg" width="96" height="96" alt="App icon, ink" /></div>
+              <div class="download-meta"><span class="download-name">app-icon-ink.svg</span><span class="download-note">system-dark match</span></div>
+            </a>
+            <a class="download" href="/app-icon-paper.svg" download>
+              <div class="download-preview"><img src="/app-icon-paper.svg" width="96" height="96" alt="App icon, paper" /></div>
+              <div class="download-meta"><span class="download-name">app-icon-paper.svg</span><span class="download-note">light surfaces</span></div>
+            </a>
+          </div>
+        </div>
+
+        <p class="downloads-foot">
+          All files use <code>viewBox</code> coordinates, scale losslessly, and have no external dependencies (gradients/fonts are referenced by family name). For pixel-perfect rendering of the <code>pgvis</code> wordmark in slides or print, install <a href="https://vercel.com/font" rel="noopener">Geist</a> on the rendering machine.
+        </p>
+      </article>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  /* Load Geist for this page only — rest of the site stays on Inter */
+  @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap");
+
+  .brand-main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+    color: #0b0b14;
+  }
+
+  .brand-hero {
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--color-text);
+  }
+
+  .brand-hero .eyebrow {
+    color: var(--color-primary);
+  }
+
+  .brand-hero h1 {
+    font-family: "Geist", -apple-system, sans-serif;
+    font-weight: 800;
+    font-size: clamp(2rem, 4vw, 3rem);
+    letter-spacing: -0.025em;
+    color: var(--color-text-strong);
+    margin: 0.4rem 0 0.75rem;
+  }
+
+  .brand-hero p {
+    max-width: 640px;
+    margin: 0 auto;
+    color: var(--color-text-muted);
+    line-height: 1.65;
+  }
+
+  .brand-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 900px) {
+    .brand-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card {
+    padding: 28px;
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.4);
+    color: #0b0b14;
+  }
+
+  .card-wide {
+    grid-column: 1 / -1;
+  }
+
+  /* Hat (card header) */
+  .hat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+    gap: 1rem;
+  }
+
+  .hat-section {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: #94a3b8;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .hat-title {
+    margin: 4px 0 0;
+    font-family: "Geist", -apple-system, sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: #0b0b14;
+    letter-spacing: -0.02em;
+  }
+
+  .hat-blurb {
+    max-width: 320px;
+    font-family: "Inter", sans-serif;
+    font-size: 11.5px;
+    color: #64748b;
+    line-height: 1.5;
+    text-align: right;
+    margin: 0;
+  }
+
+  .hat-blurb code {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Frame (inset display) */
+  .frame {
+    width: 100%;
+    border-radius: 14px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    box-sizing: border-box;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .frame-label {
+    position: absolute;
+    bottom: 10px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    color: rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .frame-dark .frame-label {
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  /* Lockup (mark + wordmark) */
+  .lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--lockup-size, 44px) * 0.32);
+  }
+
+  .lockup-reverse {
+    flex-direction: row-reverse;
+  }
+
+  .wordmark {
+    font-family: "Geist", -apple-system, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* Card 2: scale stack */
+  .scale-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Card 3: 2x2 grid */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Card 4: mark scales */
+  .mark-row {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  /* Card 5: favicons */
+  .favicon-rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .favicon-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .favicon-row {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+
+  .favicon-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .favicon-flat-tile {
+    background: #f5f2eb;
+    border-radius: 8px;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .favicon-px {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Card 6: app icons */
+  .app-icon-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+
+  .app-icon-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .app-icon-cell img {
+    border-radius: 22px;
+    box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Card 7: clear space */
+  .clearspace-inner {
+    position: relative;
+    padding: 48px;
+  }
+
+  .clearspace-dashed {
+    position: absolute;
+    inset: 0;
+    border: 1.5px dashed rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+  }
+
+  .clearspace-x {
+    position: absolute;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .clearspace-tl { top: 6px; left: 6px; }
+  .clearspace-tr { top: 6px; right: 6px; }
+  .clearspace-bl { bottom: 6px; left: 6px; }
+  .clearspace-br { bottom: 6px; right: 6px; }
+
+  /* Card 8: tokens */
+  .tokens-section {
+    margin-bottom: 16px;
+  }
+
+  .tokens-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .tokens-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .swatch-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .swatch-chip {
+    width: 84px;
+    height: 84px;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    box-sizing: border-box;
+  }
+
+  .swatch-name {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: #0b0b14;
+    letter-spacing: 0.04em;
+  }
+
+  .type-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .type-meta {
+    color: #94a3b8;
+    font-family: "Inter", sans-serif;
+    font-size: 12px;
+  }
+
+  /* Card 9: Don'ts */
+  .donts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  @media (max-width: 700px) {
+    .donts-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .donts-cell {
+    height: 140px;
+    position: relative;
+    background: #fdfaf3;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .donts-content {
+    pointer-events: none;
+  }
+
+  .donts-busy {
+    background: repeating-linear-gradient(45deg, #cbd5e1, #cbd5e1 6px, #94a3b8 6px, #94a3b8 12px);
+    padding: 12px;
+    border-radius: 6px;
+  }
+
+  .donts-marker {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #b91c1c;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Inter", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .donts-label {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    color: #b91c1c;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Card 10: OG image preview */
+  .og-card {
+    width: 100%;
+    aspect-ratio: 1200 / 630;
+    background: #f5f2eb;
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .og-glow {
+    position: absolute;
+    border-radius: 50%;
+  }
+
+  .og-glow-violet {
+    right: -120px;
+    top: -120px;
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(closest-side, rgba(139, 92, 246, 0.18), transparent);
+  }
+
+  .og-glow-cyan {
+    left: -100px;
+    bottom: -100px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(closest-side, rgba(34, 211, 238, 0.14), transparent);
+  }
+
+  .og-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8% 7%;
+  }
+
+  .og-tag {
+    margin-top: 28px;
+    font-family: "Geist", -apple-system, sans-serif;
+    font-weight: 600;
+    font-size: clamp(18px, 2.4vw, 30px);
+    line-height: 1.2;
+    color: #0b0b14;
+    letter-spacing: -0.02em;
+    max-width: 78%;
+  }
+
+  .og-url {
+    margin-top: 22px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    color: #64748b;
+    letter-spacing: 0.04em;
+  }
+
+  /* Card 11: SVG snippet */
+  .code-block {
+    background: #0b0b14;
+    border-radius: 12px;
+    padding: 18px;
+    overflow: auto;
+    max-height: 420px;
+    margin: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #cbd5e1;
+    white-space: pre;
+  }
+
+  .code-block code {
+    font-family: inherit;
+    color: inherit;
+    background: none;
+    padding: 0;
+  }
+
+  /* Downloads */
+  .downloads-group {
+    margin-bottom: 24px;
+  }
+  .downloads-group:last-of-type {
+    margin-bottom: 12px;
+  }
+
+  .downloads-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: #94a3b8;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .downloads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .download {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+
+  .download:hover {
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px -10px rgba(79, 70, 229, 0.35);
+  }
+
+  .download-preview {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    background: #f5f2eb;
+  }
+
+  .download-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    height: auto;
+  }
+
+  .download-light { background: #f5f2eb; }
+  .download-dark  { background: #0b0b14; }
+
+  .download-meta {
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    background: #ffffff;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .download-name {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+    color: #0b0b14;
+    letter-spacing: -0.01em;
+  }
+
+  .download-note {
+    font-family: "Inter", sans-serif;
+    font-size: 10.5px;
+    color: #64748b;
+  }
+
+  .downloads-foot {
+    margin: 16px 0 0;
+    font-family: "Inter", sans-serif;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.55;
+  }
+
+  .downloads-foot code {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4338ca;
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.92em;
+  }
+
+  .downloads-foot a {
+    color: #4f46e5;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+</style>

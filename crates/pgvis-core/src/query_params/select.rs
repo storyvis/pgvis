@@ -209,7 +209,11 @@ mod tests {
     fn parse_star() {
         let result = parse_select("*").unwrap();
         assert_eq!(result.len(), 1);
-        assert!(matches!(&result[0], SelectItem::Star), "expected Star, got {:?}", result[0]);
+        assert!(
+            matches!(&result[0], SelectItem::Star),
+            "expected Star, got {:?}",
+            result[0]
+        );
     }
 
     #[test]
