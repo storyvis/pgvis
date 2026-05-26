@@ -95,4 +95,87 @@ impl McpToolResult {
             is_error: true,
         }
     }
+
+    /// Create a structured error result mirroring the REST surface's
+    /// PostgREST-compatible error shape.
+    ///
+    /// Emits a single text content item containing a JSON object:
+    ///
+    /// ```json
+    /// {
+    ///   "error": {
+    ///     "code": "PGRST200",
+    ///     "message": "...",
+    ///     "details": "...",
+    ///     "hint": "..."
+    ///   }
+    /// }
+    /// ```
+    ///
+    /// Tool clients can parse this and surface code/details/hint to the
+    /// model, instead of getting a stringified `[PGRST200] ...` blob.
+    pub fn error_structured(
+        code: &str,
+        message: impl Into<String>,
+        details: Option<String>,
+        hint: Option<String>,
+    ) -> Self {
+        let body = serde_json::json!({
+            "error": {
+                "code": code,
+                "message": message.into(),
+                "details": details,
+                "hint": hint,
+            }
+        });
+        Self {
+            content: vec![McpContent::Text {
+                text: serde_json::to_string_pretty(&body).unwrap_or_else(|_| body.to_string()),
+            }],
+            is_error: true,
+        }
+    }
+
+    /// Convert a [`pgvis_core::error::Error`] into a structured MCP error
+    /// result, preserving the PGRST* code and any database-supplied details.
+    pub fn from_core_error(err: &pgvis_core::error::Error) -> Self {
+        match err {
+            pgvis_core::error::Error::Execution {
+                message,
+                db_code,
+                detail,
+                hint,
+            } => Self::error_structured(
+                db_code.as_deref().unwrap_or(err.code().as_str()),
+                message.clone(),
+                detail.clone(),
+                hint.clone(),
+            ),
+            pgvis_core::error::Error::Plan {
+                message,
+                detail,
+                hint,
+                ..
+            } => Self::error_structured(
+                err.code().as_str(),
+                message.clone(),
+                detail.clone(),
+                hint.clone(),
+            ),
+            pgvis_core::error::Error::Parse {
+                message, detail, ..
+            } => Self::error_structured(
+                err.code().as_str(),
+                message.clone(),
+                detail.clone(),
+                None,
+            ),
+            other => Self::error_structured(
+                other.code().as_str(),
+                other.to_string(),
+                None,
+                None,
+            ),
+        }
+    }
 }

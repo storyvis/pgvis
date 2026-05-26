@@ -267,6 +267,17 @@ pub struct Config {
     #[serde(default = "default_statement_timeout_ms")]
     pub statement_timeout_ms: Option<u64>,
 
+    /// Reject every mutation (POST/PATCH/PUT/DELETE on tables, RPC calls
+    /// returning into mutation paths) at the surface layer.
+    ///
+    /// The REST router still enforces per-route privileges via the database
+    /// role; this flag is an upstream cut so MCP tool catalogues (and any
+    /// other surfaces that read it) omit write tools entirely when running in
+    /// a read-only deployment (e.g. `pgvis mcp --read-only` for an LLM that
+    /// should only browse).
+    #[serde(default)]
+    pub read_only: bool,
+
     // --- Connection pool ---
     /// Maximum number of database connections in the pool.
     ///
@@ -330,6 +341,7 @@ impl Default for Config {
             tx_rollback_all: false,
             max_rows: None,
             statement_timeout_ms: default_statement_timeout_ms(),
+            read_only: false,
             pool_size: default_pool_size(),
             pool_timeout_ms: default_pool_timeout_ms(),
             pre_request: None,

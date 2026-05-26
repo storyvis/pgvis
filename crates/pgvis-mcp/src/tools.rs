@@ -41,6 +41,14 @@ pub fn build_mcp_tools(cache: &SchemaCache, config: &Config) -> Vec<McpToolDefin
             // Always add list (read) tool
             tools.push(make_list_tool(routing, schema, table));
 
+            // Skip mutation tools entirely in read-only mode. They would only
+            // be rejected at call time anyway; omitting them keeps the tool
+            // catalogue honest and prevents the model from even attempting a
+            // write that will fail.
+            if config.read_only {
+                continue;
+            }
+
             // Add create tool if insertable
             if table.insertable {
                 tools.push(make_create_tool(routing, schema, table));
@@ -57,11 +65,15 @@ pub fn build_mcp_tools(cache: &SchemaCache, config: &Config) -> Vec<McpToolDefin
             }
         }
 
-        // RPC tools from routines
-        for (_ident, routine_group) in &cache.routines {
-            for routine in routine_group {
-                if routine.ident.schema == *schema {
-                    tools.push(make_call_tool(routing, schema, routine));
+        // RPC tools from routines. RPCs may have side effects we can't see
+        // from the catalogue, so under read_only we drop them entirely too;
+        // exposing them while disallowing mutations would be misleading.
+        if !config.read_only {
+            for (_ident, routine_group) in &cache.routines {
+                for routine in routine_group {
+                    if routine.ident.schema == *schema {
+                        tools.push(make_call_tool(routing, schema, routine));
+                    }
                 }
             }
         }
@@ -167,7 +179,14 @@ pub async fn handle_tool_call(
     // 1. Parse tool name → schema + verb + target
     let (schema, verb, target) = match parse_tool_name(&call.name, &config.routing) {
         Ok(parsed) => parsed,
-        Err(e) => return McpToolResult::error(e),
+        Err(e) => {
+            return McpToolResult::error_structured(
+                "PGRST404",
+                e,
+                None,
+                Some("Tool names follow `{schema}{sep}{verb}_{target}`.".to_string()),
+            );
+        }
     };
 
     // 2. Convert verb to RequestMethod
@@ -177,8 +196,27 @@ pub async fn handle_tool_call(
         "update" => RequestMethod::Patch,
         "delete" => RequestMethod::Delete,
         "call" => RequestMethod::Post,
-        _ => return McpToolResult::error(format!("Unknown verb: {verb}")),
+        _ => {
+            return McpToolResult::error_structured(
+                "PGRST404",
+                format!("Unknown verb: {verb}"),
+                None,
+                None,
+            );
+        }
     };
+
+    // Refuse mutations up front when the server is read-only. We also strip
+    // these tools from the catalogue in `build_mcp_tools`, but a model may
+    // have a stale tool list cached, so guard at call time too.
+    if config.read_only && matches!(verb, "create" | "update" | "delete" | "call") {
+        return McpToolResult::error_structured(
+            "PGRST303",
+            format!("MCP server is read-only; '{verb}' is not permitted"),
+            None,
+            Some("Restart without --read-only to enable mutations.".to_string()),
+        );
+    }
 
     // 3. Build ApiRequest from tool arguments
     let args = call.arguments.as_object();
@@ -262,7 +300,7 @@ pub async fn handle_tool_call(
     // 4. Plan the request (same pipeline as REST)
     let plan = match plan_request(&api_request, cache, dialect, config) {
         Ok(plan) => plan,
-        Err(err) => return McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
+        Err(err) => return McpToolResult::from_core_error(&err),
     };
 
     // For Inspect plans, return metadata directly
@@ -274,18 +312,16 @@ pub async fn handle_tool_call(
     }
 
     // 5. Render the plan to SQL + parameters
-    let (sql, params) = if dialect.supports_set_local {
+    let render_result = if dialect.supports_set_local {
         // Postgres path: CTE-wrapped SQL
-        match query::render(&plan, dialect) {
-            Ok(rendered) => rendered,
-            Err(err) => return McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
-        }
+        query::render(&plan, dialect)
     } else {
         // SQLite path: render without CTE wrapping
-        match query::render_inner(&plan, dialect) {
-            Ok(rendered) => rendered,
-            Err(err) => return McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
-        }
+        query::render_inner(&plan, dialect)
+    };
+    let (sql, params) = match render_result {
+        Ok(rendered) => rendered,
+        Err(err) => return McpToolResult::from_core_error(&err),
     };
 
     // 6. Build ExecContext
@@ -298,8 +334,39 @@ pub async fn handle_tool_call(
         is_mutation,
     };
 
-    // 7. Execute via backend
-    match backend.execute(&exec_ctx, &sql, &params).await {
+    // 7. Execute via backend, bounded by a per-call deadline.
+    //
+    // `statement_timeout_ms` is what Postgres uses to abort the SQL itself
+    // (`SET LOCAL statement_timeout`). We additionally wrap the future in
+    // `tokio::time::timeout` so that backends that can't honour a SQL-level
+    // timeout (e.g. SQLite, or a Postgres connection stuck in TLS handshake)
+    // still bound the MCP tool call. We allow a small grace window past the
+    // SQL timeout so the database's own timeout error can win when both
+    // would fire near-simultaneously.
+    let exec_fut = backend.execute(&exec_ctx, &sql, &params);
+    let exec_result = match config.statement_timeout_ms {
+        Some(ms) if ms > 0 => {
+            let deadline = std::time::Duration::from_millis(ms.saturating_add(1_000));
+            match tokio::time::timeout(deadline, exec_fut).await {
+                Ok(res) => res,
+                Err(_) => {
+                    return McpToolResult::error_structured(
+                        "PGRST401",
+                        format!("MCP tool call exceeded {ms}ms statement timeout"),
+                        None,
+                        Some(
+                            "Tighten the filter, lower `limit`, or raise \
+                             statement_timeout_ms in the config."
+                                .to_string(),
+                        ),
+                    );
+                }
+            }
+        }
+        _ => exec_fut.await,
+    };
+
+    match exec_result {
         Ok(result) => {
             // If count was requested, return structured response with total
             let count_requested = args
@@ -322,7 +389,7 @@ pub async fn handle_tool_call(
                 McpToolResult::success_text(body_str)
             }
         }
-        Err(err) => McpToolResult::error(format!("[{}] {err}", err.code().as_str())),
+        Err(err) => McpToolResult::from_core_error(&err),
     }
 }
 
