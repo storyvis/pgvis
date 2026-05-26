@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Landing.astro";
+import engineDiagram from "../assets/engine-diagram.svg?raw";
 
 const features = [
   {
@@ -97,14 +98,7 @@ const features = [
     <section class="diagram">
       <div class="container">
         <figure class="engine-diagram-wrap">
-          <img
-            src="/engine-diagram.svg"
-            alt="pgvis pipeline: Postgres and SQLite into the pgvis engine, then out to MCP, REST, and OpenAPI"
-            width="800"
-            height="360"
-            loading="lazy"
-            decoding="async"
-          />
+          <Fragment set:html={engineDiagram} />
         </figure>
       </div>
     </section>

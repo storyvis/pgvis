@@ -284,7 +284,7 @@ header nav {
   overflow: hidden;
 }
 
-.engine-diagram-wrap img {
+.engine-diagram-wrap svg {
   display: block;
   width: 100%;
   height: auto;
