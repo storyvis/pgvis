@@ -21,7 +21,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/storyvis/pgvis",
+          href: "https://github.com/pgvis/pgvis",
         },
       ],
       sidebar: [

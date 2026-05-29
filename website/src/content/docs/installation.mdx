@@ -9,7 +9,7 @@ description: All the ways to install and run pgvis.
 
 ```bash
 # Clone the repository
-git clone https://github.com/storyvis/pgvis.git
+git clone https://github.com/pgvis/pgvis.git
 cd pgvis
 
 # Build release binary
@@ -24,10 +24,10 @@ If you have Nix with flakes enabled:
 
 ```bash
 # Build
-nix build github:storyvis/pgvis
+nix build github:pgvis/pgvis
 
 # Or run directly
-nix run github:storyvis/pgvis -- serve --dsn "postgres://localhost/mydb"
+nix run github:pgvis/pgvis -- serve --dsn "postgres://localhost/mydb"
 
 # Development shell
 nix develop
@@ -37,7 +37,7 @@ nix develop
 
 ```bash
 docker run -e PGVIS_DSN="postgres://host.docker.internal/mydb" \
-  storyvisai/pgvis serve --bind 0.0.0.0:3000
+  ghcr.io/pgvis/pgvis serve --bind 0.0.0.0:3000
 ```
 
 ## Verifying Installation
