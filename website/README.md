@@ -86,4 +86,4 @@ Create a `.mdx` file in `src/content/docs/guides/`. Guides are auto-generated in
 
 The website is automatically deployed via GitHub Actions on push to `main` when files in `website/` change. See `.github/workflows/website.yml`.
 
-Currently configured for GitHub Pages. To switch to Vercel/Cloudflare Pages/Netlify, update the workflow accordingly.
+Currently deployed to Cloudflare Workers. See `wrangler.toml` for domain routing configuration.

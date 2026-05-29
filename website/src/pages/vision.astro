@@ -40,7 +40,7 @@ const statusLabels: Record<string, string> = {
 
 <Layout
   title="Vision &amp; Roadmap — pgvis"
-  description="Where pgvis is going: a hardened MCP surface, a SQLite backend, a stable embed API — and a longer-horizon push toward GPU-accelerated pgvector and a managed, Firebase-style pgvis DBaaS. All open source."
+  description="Where pgvis is going: a hardened MCP surface, MCP over SSE, a stable embed API — all open source under Apache-2.0."
 >
   <main>
     <section class="hero">
@@ -51,10 +51,9 @@ const statusLabels: Record<string, string> = {
           <span class="gradient-text">openly, one milestone at a time</span>
         </h1>
         <p class="subtitle">
-          pgvis is an I/O-free Rust engine that turns Postgres (and SQLite) into MCP, REST, and OpenAPI. The
-          roadmap below is concrete and code-driven. Past 1.0, we want to go further — GPU-accelerated
-          vector search and a managed, Firebase-style pgvis DBaaS — all of it built in the open,
-          under the same Apache-2.0 license as the engine.
+          pgvis is an I/O-free Rust engine that turns Postgres and SQLite into MCP, REST, and OpenAPI.
+          The roadmap below is concrete and code-driven — built in the open, under the Apache-2.0
+          license.
         </p>
         <div class="cta-group">
           <a href="https://github.com/storyvis/pgvis" class="btn btn-primary" rel="noopener">
@@ -96,71 +95,6 @@ const statusLabels: Record<string, string> = {
         <p class="vision-source">
           Source: <a href="https://github.com/storyvis/pgvis" rel="noopener">commits on `main`</a>
         </p>
-      </div>
-    </section>
-
-    <section class="vision-horizon">
-      <div class="container">
-        <div class="section-header">
-          <span class="eyebrow">Beyond 1.0</span>
-          <h2>The longer horizon</h2>
-          <p class="section-sub">
-            What we want to build <em>on top of</em> pgvis once the engine is stable. These are
-            forward-looking and explicitly not part of the v0.x roadmap above — but they will
-            ship in the open, just like the engine.
-          </p>
-        </div>
-        <div class="horizon-grid">
-          <article class="horizon-card">
-            <div class="horizon-icon" aria-hidden="true">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />
-                <path d="M12 3v18M3 12h18" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </div>
-            <span class="horizon-pill">On the horizon</span>
-            <h3>GPU-accelerated pgvector</h3>
-            <p>
-              AI agents need low-latency embedding search next to the relational and MCP surfaces
-              pgvis already provides. We're exploring GPU kernels on top of Postgres'
-              <code>pgvector</code> so similarity queries scale alongside the rest of your schema —
-              not in a separate vector database.
-            </p>
-            <small class="horizon-note">Early R&amp;D · not yet on the OSS roadmap</small>
-          </article>
-          <article class="horizon-card">
-            <div class="horizon-icon" aria-hidden="true">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
-                <path d="M3 17a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v0z" />
-                <path d="M7 8.5h.01M7 17.5h.01" />
-              </svg>
-            </div>
-            <span class="horizon-pill">In early planning</span>
-            <h3>Managed pgvis — a Firebase-style DBaaS</h3>
-            <p>
-              A hosted product where the same OSS engine you run locally backs the managed offering.
-              Bring-your-own Postgres, or run on managed infrastructure with MCP, REST, and OpenAPI
-              surfaces switched on at the click of a button. Same engine, same code, just deployed
-              and operated for you.
-            </p>
-            <small class="horizon-note">Planning stage · design discussions happen on GitHub</small>
-          </article>
-        </div>
-        <div class="horizon-cta">
-          <p>
-            All of this is being built openly. The engine, the GPU vector layer, and the managed
-            DBaaS all stay Apache-2.0 — no rug-pulls, no source-available licenses, no
-            commercial fork. If you want to shape the direction, the design discussions live on GitHub.
-          </p>
-          <a class="btn btn-primary" href="https://github.com/storyvis/pgvis/discussions" rel="noopener">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.55v-1.93c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.51-1.47.11-3.07 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.78 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.6.23 2.78.11 3.07.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
-            </svg>
-            Join the discussion on GitHub
-          </a>
-        </div>
       </div>
     </section>
 

@@ -4,9 +4,9 @@
 PostgREST-compatible REST API and an OpenAPI 3.0 document — from one Rust
 engine.**
 
-> **Status:** `v0.1.0` · early development · **Postgres only** · SQLite and
-> MCP-over-SSE are on the [roadmap](#roadmap). The Postgres REST / MCP /
-> OpenAPI path works today, and the build-from-source quick start below is
+> **Status:** `v0.1.0` · early development · **Postgres & SQLite** ·
+> MCP-over-SSE is on the [roadmap](#roadmap). REST, MCP, and OpenAPI work
+> today on both backends, and the build-from-source quick start below is
 > real and runnable.
 
 ---
@@ -208,13 +208,14 @@ config keys map directly — see the table in that file). Most-used fields:
 
 ## Architecture
 
-pgvis is a six-crate Rust workspace; all dependencies point inward to the
+pgvis is a seven-crate Rust workspace; all dependencies point inward to the
 I/O-free core.
 
 | Crate | Role |
 |---|---|
 | [pgvis-core](crates/pgvis-core) | I/O-free engine: query parser, plan layer, SQL builder, schema cache, `Backend`/`Dialect`/`Config` |
 | [pgvis-postgres](crates/pgvis-postgres) | Postgres `Backend`: connection pool, introspection, execution |
+| [pgvis-sqlite](crates/pgvis-sqlite) | SQLite `Backend`: introspection and execution via `rusqlite` |
 | [pgvis-router](crates/pgvis-router) | axum REST router + OpenAPI generator |
 | [pgvis-mcp](crates/pgvis-mcp) | MCP tools & resources (stdio + Streamable HTTP) |
 | [pgvis-lib](crates/pgvis-lib) | `Builder` facade — the one way to assemble the stack |
@@ -238,10 +239,9 @@ The authoritative architecture reference lives in **[arch/](arch/README.md)**:
 
 | Milestone | Scope |
 |---|---|
-| 0.1 | REST + OpenAPI on Postgres; MCP tools wired; Postgres execution implemented |
+| 0.1 | REST + OpenAPI on Postgres & SQLite; MCP tools wired; execution on both backends |
 | **0.2** *(current)* | MCP over stdio hardened: stderr logging, graceful shutdown, EPIPE-tolerant, per-call deadline, structured PGRST errors, `--read-only` mode, `--schema`/env-overridable CLI |
-| 0.3 | SQLite backend |
-| 0.4 | MCP over SSE |
+| 0.3 | MCP over SSE |
 | 1.0 | Stable embed API |
 
 ## License
